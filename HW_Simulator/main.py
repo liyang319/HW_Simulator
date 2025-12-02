@@ -10,7 +10,7 @@ class HardwareSimulator:
     def __init__(self, root):
         self.root = root
         self.root.title("硬件仿真系统 v1.0.0")
-        self.root.geometry("800x600")
+        self.root.geometry("900x700")
         self.root.configure(bg='white')
 
         # 状态变量
@@ -21,23 +21,71 @@ class HardwareSimulator:
         self.stop_timer = False
         self.is_connected = False
 
+        # 创建示例JSON文件（如果不存在）
+        self.create_sample_json_files()
+
         # 加载参数和变量数据
         self.input_params = self.load_json_file("input_params.json")
         self.watch_variables = self.load_json_file("watch_variables.json")
 
+        # 存储表格行引用
+        self.param_rows = []
+        self.watch_rows = []
+
         self.create_widgets()
         self.add_log("系统启动成功...")
+
+    def create_sample_json_files(self):
+        """创建示例JSON文件"""
+        try:
+            # 检查文件是否已存在
+            with open("input_params.json", "r", encoding="utf-8") as f:
+                json.load(f)  # 尝试读取
+        except (FileNotFoundError, json.JSONDecodeError):
+            # 创建输入参数示例文件
+            input_params = [
+                {"param": "采样频率", "type": "int", "val": "1000"},
+                {"param": "仿真时长", "type": "float", "val": "10.5"},
+                {"param": "模型名称", "type": "string", "val": "test_model"},
+                {"param": "参数A", "type": "int", "val": "50"},
+                {"param": "参数B", "type": "float", "val": "3.14"},
+                {"param": "参数C", "type": "string", "val": "default"}
+            ]
+
+            with open("input_params.json", "w", encoding="utf-8") as f:
+                json.dump(input_params, f, ensure_ascii=False, indent=2)
+            print("创建了 input_params.json 文件")
+
+        try:
+            with open("watch_variables.json", "r", encoding="utf-8") as f:
+                json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            # 创建监视变量示例文件
+            watch_variables = [
+                {"variable": "温度", "type": "float", "val": "25.5"},
+                {"variable": "压力", "type": "float", "val": "101.3"},
+                {"variable": "转速", "type": "int", "val": "1500"},
+                {"variable": "状态", "type": "string", "val": "正常"},
+                {"variable": "电流", "type": "float", "val": "12.5"},
+                {"variable": "电压", "type": "float", "val": "220.0"}
+            ]
+
+            with open("watch_variables.json", "w", encoding="utf-8") as f:
+                json.dump(watch_variables, f, ensure_ascii=False, indent=2)
+            print("创建了 watch_variables.json 文件")
 
     def load_json_file(self, filename):
         """加载JSON文件，如果文件不存在则返回空列表"""
         try:
             with open(filename, 'r', encoding='utf-8') as f:
-                return json.load(f)
+                data = json.load(f)
+                print(f"成功加载 {filename}: {len(data)} 条数据")
+                return data
         except FileNotFoundError:
             print(f"警告: 文件 {filename} 不存在")
             return []
-        except json.JSONDecodeError:
-            print(f"错误: 文件 {filename} JSON格式错误")
+        except json.JSONDecodeError as e:
+            print(f"错误: 文件 {filename} JSON格式错误: {e}")
             return []
 
     def create_widgets(self):
@@ -73,8 +121,9 @@ class HardwareSimulator:
                                           command=self.select_model)
         self.select_model_btn.pack(side=tk.LEFT, padx=(0, 10))
 
-        # 模型文件名显示（去掉"模型文件名"文字，直接显示文件名）
-        self.model_file_label = tk.Label(model_ops_frame, text="未选择文件", font=("Arial", 10), bg='white')
+        # 模型文件名显示
+        self.model_file_label = tk.Label(model_ops_frame, text="未选择文件", font=("Arial", 10),
+                                         bg='white', width=15, anchor='w')
         self.model_file_label.pack(side=tk.LEFT, padx=(0, 20))
 
         # 模型下载按钮和状态显示
@@ -82,8 +131,9 @@ class HardwareSimulator:
                                             command=self.download_model)
         self.download_model_btn.pack(side=tk.LEFT, padx=(0, 10))
 
-        # 模型下载状态显示（去掉"模型下载状态"文字，直接显示状态）
-        self.download_status_label = tk.Label(model_ops_frame, text="未下载", font=("Arial", 10), bg='white')
+        # 模型下载状态显示
+        self.download_status_label = tk.Label(model_ops_frame, text="未下载", font=("Arial", 10),
+                                              bg='white', width=12, anchor='w')
         self.download_status_label.pack(side=tk.LEFT, padx=(0, 20))
 
         # 模型运行按钮和时间显示
@@ -92,7 +142,8 @@ class HardwareSimulator:
         self.run_button.pack(side=tk.LEFT, padx=(0, 10))
 
         # 运行时间显示
-        self.time_label = tk.Label(model_ops_frame, text="00:00:00", font=("Arial", 10), bg='white')
+        self.time_label = tk.Label(model_ops_frame, text="00:00:00", font=("Arial", 10),
+                                   bg='white', width=10, anchor='center')
         self.time_label.pack(side=tk.LEFT)
 
         # 3. 中间区域：参数表格和监视表格
@@ -114,9 +165,9 @@ class HardwareSimulator:
                                         command=self.send_parameters)
         self.param_send_btn.pack(side=tk.LEFT)
 
-        # 右侧：变量监视标题（与列表左对齐）
+        # 右侧：变量监视标题
         right_title_frame = tk.Frame(table_titles_frame, bg='white')
-        right_title_frame.pack(side=tk.LEFT, anchor='w', padx=(50, 0))
+        right_title_frame.pack(side=tk.RIGHT, anchor='w')
 
         tk.Label(right_title_frame, text="变量监视", font=("Arial", 10, "bold"), bg='white').pack(side=tk.LEFT)
 
@@ -126,13 +177,13 @@ class HardwareSimulator:
 
         # 左侧参数表格
         params_frame = tk.Frame(tables_container, bg='white')
-        params_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10))
+        params_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
 
         self.setup_params_table(params_frame)
 
         # 右侧监视表格
         watch_frame = tk.Frame(tables_container, bg='white')
-        watch_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(10, 0))
+        watch_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(5, 0))
 
         self.setup_watch_table(watch_frame)
 
@@ -155,28 +206,29 @@ class HardwareSimulator:
 
     def setup_params_table(self, parent):
         """设置参数输入表格"""
-        # 创建表格框架
-        table_frame = tk.Frame(parent, bg='white')
+        # 创建带边框的表格框架
+        table_frame = tk.Frame(parent, bg='black', bd=1, relief='solid')
         table_frame.pack(fill=tk.BOTH, expand=True)
 
         # 创建Treeview表格
         self.params_tree = ttk.Treeview(table_frame, columns=("索引", "输入参数", "参数数值"),
-                                        show="headings", height=6)
+                                        show="headings", height=8)
 
-        # 设置列属性 - 索引列宽度缩小
+        # 设置列属性
         self.params_tree.heading("索引", text="索引")
         self.params_tree.heading("输入参数", text="输入参数")
         self.params_tree.heading("参数数值", text="参数数值")
 
-        self.params_tree.column("索引", width=40, anchor=tk.CENTER)  # 缩小索引列宽度
-        self.params_tree.column("输入参数", width=120, anchor=tk.CENTER)
-        self.params_tree.column("参数数值", width=120, anchor=tk.CENTER)
+        # 设置列宽度
+        self.params_tree.column("索引", width=60, anchor=tk.CENTER, minwidth=60)
+        self.params_tree.column("输入参数", width=120, anchor=tk.CENTER, minwidth=120)
+        self.params_tree.column("参数数值", width=120, anchor=tk.CENTER, minwidth=120)
 
-        # 设置表格样式，增加分隔线
+        # 配置表格样式
         style = ttk.Style()
         style.configure("Treeview",
-                        rowheight=25,
                         font=('Arial', 10),
+                        rowheight=25,
                         borderwidth=1,
                         relief='solid')
         style.configure("Treeview.Heading",
@@ -198,32 +250,36 @@ class HardwareSimulator:
 
     def setup_watch_table(self, parent):
         """设置变量监视表格"""
-        # 创建表格框架
-        table_frame = tk.Frame(parent, bg='white')
+        # 创建带边框的表格框架
+        table_frame = tk.Frame(parent, bg='black', bd=1, relief='solid')
         table_frame.pack(fill=tk.BOTH, expand=True)
 
         # 创建Treeview表格
         self.watch_tree = ttk.Treeview(table_frame, columns=("索引", "变量名称", "参数数值", "波形"),
-                                       show="headings", height=6)
+                                       show="headings", height=8)
 
-        # 设置列属性 - 索引列宽度缩小
+        # 设置列属性
         self.watch_tree.heading("索引", text="索引")
         self.watch_tree.heading("变量名称", text="变量名称")
         self.watch_tree.heading("参数数值", text="参数数值")
         self.watch_tree.heading("波形", text="波形")
 
-        self.watch_tree.column("索引", width=40, anchor=tk.CENTER)  # 缩小索引列宽度
-        self.watch_tree.column("变量名称", width=100, anchor=tk.CENTER)
-        self.watch_tree.column("参数数值", width=100, anchor=tk.CENTER)
-        self.watch_tree.column("波形", width=60, anchor=tk.CENTER)
+        # 设置列宽度
+        self.watch_tree.column("索引", width=60, anchor=tk.CENTER, minwidth=60)
+        self.watch_tree.column("变量名称", width=100, anchor=tk.CENTER, minwidth=100)
+        self.watch_tree.column("参数数值", width=100, anchor=tk.CENTER, minwidth=100)
+        self.watch_tree.column("波形", width=60, anchor=tk.CENTER, minwidth=60)
 
-        # 设置表格样式，增加分隔线
+        # 配置表格样式
         style = ttk.Style()
         style.configure("Treeview",
-                        rowheight=25,
                         font=('Arial', 10),
+                        rowheight=25,
                         borderwidth=1,
                         relief='solid')
+        style.configure("Treeview.Heading",
+                        font=('Arial', 10, 'bold'),
+                        background='lightgray')
 
         # 添加滚动条
         scrollbar = ttk.Scrollbar(table_frame, orient=tk.VERTICAL, command=self.watch_tree.yview)
@@ -244,12 +300,18 @@ class HardwareSimulator:
         for item in self.params_tree.get_children():
             self.params_tree.delete(item)
 
+        print(f"正在更新参数表格，数据条数: {len(self.input_params)}")
+
         # 添加数据
         for idx, param in enumerate(self.input_params, 1):
+            param_name = param.get("param", f"参数{idx}")
+            param_value = param.get("val", "")
+            print(f"添加参数: {idx}, {param_name}, {param_value}")
+
             self.params_tree.insert("", tk.END, values=(
                 idx,
-                param.get("param", ""),
-                param.get("val", "")
+                param_name,
+                param_value
             ))
 
     def update_watch_table(self):
@@ -258,12 +320,18 @@ class HardwareSimulator:
         for item in self.watch_tree.get_children():
             self.watch_tree.delete(item)
 
+        print(f"正在更新监视表格，数据条数: {len(self.watch_variables)}")
+
         # 添加数据
         for idx, var in enumerate(self.watch_variables, 1):
+            var_name = var.get("variable", f"变量{idx}")
+            var_value = var.get("val", "")
+            print(f"添加变量: {idx}, {var_name}, {var_value}")
+
             self.watch_tree.insert("", tk.END, values=(
                 idx,
-                var.get("variable", ""),
-                var.get("val", ""),
+                var_name,
+                var_value,
                 "波形"
             ))
 
@@ -288,10 +356,10 @@ class HardwareSimulator:
                 return
 
             # 创建编辑框
-            edit_frame = tk.Frame(self.params_tree, borderwidth=1, relief="solid")
+            edit_frame = tk.Frame(self.params_tree, borderwidth=1, relief="solid", bg='white')
             edit_frame.place(x=bbox[0], y=bbox[1], width=bbox[2], height=bbox[3])
 
-            entry = tk.Entry(edit_frame, font=("Arial", 10))
+            entry = tk.Entry(edit_frame, font=("Arial", 10), bg='white')
             entry.insert(0, current_value)
             entry.pack(fill=tk.BOTH, expand=True)
             entry.focus_set()
@@ -362,7 +430,6 @@ class HardwareSimulator:
         self.download_status_label.config(text="下载中...")
         self.add_log("开始下载模型...")
 
-        # 模拟下载过程
         def simulate_download():
             time.sleep(2)
             self.root.after(0, lambda: self.download_status_label.config(text="已完成"))
@@ -374,7 +441,6 @@ class HardwareSimulator:
         """下发参数"""
         self.add_log("参数下发中...")
 
-        # 模拟参数下发过程
         def simulate_send():
             time.sleep(1)
             self.root.after(0, lambda: self.add_log("参数下发完成"))
@@ -452,42 +518,10 @@ class HardwareSimulator:
 
         self.log_text.insert(tk.END, log_message)
         self.log_text.see(tk.END)
-
-
-def create_sample_json_files():
-    """创建示例JSON文件"""
-    # 创建输入参数示例文件
-    input_params = [
-        {"param": "采样频率", "type": "int", "val": "1000"},
-        {"param": "仿真时长", "type": "float", "val": "10.5"},
-        {"param": "模型名称", "type": "string", "val": "test_model"},
-        {"param": "参数A", "type": "int", "val": "50"},
-        {"param": "参数B", "type": "float", "val": "3.14"},
-        {"param": "参数C", "type": "string", "val": "default"}
-    ]
-
-    with open("input_params.json", "w", encoding="utf-8") as f:
-        json.dump(input_params, f, ensure_ascii=False, indent=2)
-
-    # 创建监视变量示例文件
-    watch_variables = [
-        {"variable": "温度", "type": "float", "val": "25.5"},
-        {"variable": "压力", "type": "float", "val": "101.3"},
-        {"variable": "转速", "type": "int", "val": "1500"},
-        {"variable": "状态", "type": "string", "val": "正常"},
-        {"variable": "电流", "type": "float", "val": "12.5"},
-        {"variable": "电压", "type": "float", "val": "220.0"}
-    ]
-
-    with open("watch_variables.json", "w", encoding="utf-8") as f:
-        json.dump(watch_variables, f, ensure_ascii=False, indent=2)
+        self.log_text.update()
 
 
 if __name__ == "__main__":
-    # 创建示例JSON文件
-    create_sample_json_files()
-
-    # 创建主窗口
     root = tk.Tk()
     app = HardwareSimulator(root)
     root.mainloop()
