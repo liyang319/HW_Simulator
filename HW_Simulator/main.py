@@ -10,7 +10,7 @@ class HardwareSimulator:
     def __init__(self, root):
         self.root = root
         self.root.title("硬件仿真系统 v1.0.0")
-        self.root.geometry("900x700")
+        self.root.geometry("800x600")
         self.root.configure(bg='white')
 
         # 状态变量
@@ -54,7 +54,6 @@ class HardwareSimulator:
         target_frame = tk.Frame(main_container, bg='white')
         target_frame.pack(fill=tk.X, pady=(0, 10), anchor='w')
 
-        # 目标机标签和输入框在同一行
         tk.Label(target_frame, text="目标机:", font=("Arial", 10), bg='white').pack(side=tk.LEFT, padx=(0, 5))
 
         self.target_entry = tk.Entry(target_frame, width=20, font=("Arial", 10))
@@ -65,57 +64,43 @@ class HardwareSimulator:
                                         command=self.toggle_connection)
         self.connect_button.pack(side=tk.LEFT)
 
-        # 2. 模型操作区域（第二行）- 严格按照图片布局
+        # 2. 模型操作区域（第二行）
         model_ops_frame = tk.Frame(main_container, bg='white')
         model_ops_frame.pack(fill=tk.X, pady=(0, 15), anchor='w')
 
-        # 左侧：选择模型按钮 + 模型文件名标签
-        left_ops_frame = tk.Frame(model_ops_frame, bg='white')
-        left_ops_frame.pack(side=tk.LEFT, anchor='w')
-
-        # 选择模型按钮
-        self.select_model_btn = tk.Button(left_ops_frame, text="选择模型", width=10, font=("Arial", 10),
+        # 选择模型按钮和文件名显示
+        self.select_model_btn = tk.Button(model_ops_frame, text="选择模型", width=10, font=("Arial", 10),
                                           command=self.select_model)
-        self.select_model_btn.pack(side=tk.LEFT, padx=(0, 5))
+        self.select_model_btn.pack(side=tk.LEFT, padx=(0, 10))
 
-        # 模型文件名标签（文本显示）
-        tk.Label(left_ops_frame, text="模型文件名", font=("Arial", 10), bg='white').pack(side=tk.LEFT, padx=(0, 5))
-        self.model_file_label = tk.Label(left_ops_frame, text="未选择文件", font=("Arial", 10),
-                                         width=15, relief=tk.SUNKEN, bg="white", anchor='w')
+        # 模型文件名显示（去掉"模型文件名"文字，直接显示文件名）
+        self.model_file_label = tk.Label(model_ops_frame, text="未选择文件", font=("Arial", 10), bg='white')
         self.model_file_label.pack(side=tk.LEFT, padx=(0, 20))
 
-        # 中间：模型下载按钮 + 模型下载状态标签
-        middle_ops_frame = tk.Frame(model_ops_frame, bg='white')
-        middle_ops_frame.pack(side=tk.LEFT, anchor='w')
-
-        self.download_model_btn = tk.Button(middle_ops_frame, text="模型下载", width=10, font=("Arial", 10),
+        # 模型下载按钮和状态显示
+        self.download_model_btn = tk.Button(model_ops_frame, text="模型下载", width=10, font=("Arial", 10),
                                             command=self.download_model)
-        self.download_model_btn.pack(side=tk.LEFT, padx=(0, 5))
+        self.download_model_btn.pack(side=tk.LEFT, padx=(0, 10))
 
-        tk.Label(middle_ops_frame, text="模型下载状态", font=("Arial", 10), bg='white').pack(side=tk.LEFT, padx=(0, 5))
-        self.download_status_label = tk.Label(middle_ops_frame, text="未下载", font=("Arial", 10),
-                                              width=12, relief=tk.SUNKEN, bg="white", anchor='w')
+        # 模型下载状态显示（去掉"模型下载状态"文字，直接显示状态）
+        self.download_status_label = tk.Label(model_ops_frame, text="未下载", font=("Arial", 10), bg='white')
         self.download_status_label.pack(side=tk.LEFT, padx=(0, 20))
 
-        # 右侧：模型运行按钮 + 运行时间标签
-        right_ops_frame = tk.Frame(model_ops_frame, bg='white')
-        right_ops_frame.pack(side=tk.LEFT, anchor='w')
-
-        self.run_button = tk.Button(right_ops_frame, text="模型运行", width=10, font=("Arial", 10),
+        # 模型运行按钮和时间显示
+        self.run_button = tk.Button(model_ops_frame, text="模型运行", width=10, font=("Arial", 10),
                                     command=self.toggle_model_run)
-        self.run_button.pack(side=tk.LEFT, padx=(0, 5))
+        self.run_button.pack(side=tk.LEFT, padx=(0, 10))
 
-        # 运行时间标签（文本显示）
-        self.time_label = tk.Label(right_ops_frame, text="00:00:00", font=("Arial", 10),
-                                   width=12, relief=tk.SUNKEN, bg="white", anchor='center')
+        # 运行时间显示
+        self.time_label = tk.Label(model_ops_frame, text="00:00:00", font=("Arial", 10), bg='white')
         self.time_label.pack(side=tk.LEFT)
 
         # 3. 中间区域：参数表格和监视表格
         middle_frame = tk.Frame(main_container, bg='white')
         middle_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 15))
 
-        # 表格标题行 - 在同一行，高度一致
-        table_titles_frame = tk.Frame(middle_frame, bg='white', height=30)
+        # 表格标题行
+        table_titles_frame = tk.Frame(middle_frame, bg='white')
         table_titles_frame.pack(fill=tk.X, pady=(0, 5))
 
         # 左侧：模型参数输入标题 + 参数下发按钮
@@ -129,25 +114,25 @@ class HardwareSimulator:
                                         command=self.send_parameters)
         self.param_send_btn.pack(side=tk.LEFT)
 
-        # 右侧：变量监视标题
+        # 右侧：变量监视标题（与列表左对齐）
         right_title_frame = tk.Frame(table_titles_frame, bg='white')
-        right_title_frame.pack(side=tk.RIGHT, anchor='e')
+        right_title_frame.pack(side=tk.LEFT, anchor='w', padx=(50, 0))
 
         tk.Label(right_title_frame, text="变量监视", font=("Arial", 10, "bold"), bg='white').pack(side=tk.LEFT)
 
-        # 表格容器 - 使用Frame确保严格对齐
+        # 表格容器
         tables_container = tk.Frame(middle_frame, bg='white')
         tables_container.pack(fill=tk.BOTH, expand=True)
 
         # 左侧参数表格
         params_frame = tk.Frame(tables_container, bg='white')
-        params_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
+        params_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10))
 
         self.setup_params_table(params_frame)
 
         # 右侧监视表格
         watch_frame = tk.Frame(tables_container, bg='white')
-        watch_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(5, 0))
+        watch_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(10, 0))
 
         self.setup_watch_table(watch_frame)
 
@@ -169,23 +154,23 @@ class HardwareSimulator:
         log_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
     def setup_params_table(self, parent):
-        """设置参数输入表格（支持双击编辑）"""
+        """设置参数输入表格"""
         # 创建表格框架
         table_frame = tk.Frame(parent, bg='white')
         table_frame.pack(fill=tk.BOTH, expand=True)
 
-        # 创建表格
-        columns = ("索引", "输入参数", "参数数值")
-        self.params_table = ttk.Treeview(table_frame, columns=columns, show="headings", height=8)
+        # 创建Treeview表格
+        self.params_tree = ttk.Treeview(table_frame, columns=("索引", "输入参数", "参数数值"),
+                                        show="headings", height=6)
 
         # 设置列属性 - 索引列宽度缩小
-        self.params_table.heading("索引", text="索引")
-        self.params_table.heading("输入参数", text="输入参数")
-        self.params_table.heading("参数数值", text="参数数值")
+        self.params_tree.heading("索引", text="索引")
+        self.params_tree.heading("输入参数", text="输入参数")
+        self.params_tree.heading("参数数值", text="参数数值")
 
-        self.params_table.column("索引", width=40, anchor=tk.CENTER)  # 缩小索引列宽度
-        self.params_table.column("输入参数", width=120, anchor=tk.CENTER)
-        self.params_table.column("参数数值", width=120, anchor=tk.CENTER)
+        self.params_tree.column("索引", width=40, anchor=tk.CENTER)  # 缩小索引列宽度
+        self.params_tree.column("输入参数", width=120, anchor=tk.CENTER)
+        self.params_tree.column("参数数值", width=120, anchor=tk.CENTER)
 
         # 设置表格样式，增加分隔线
         style = ttk.Style()
@@ -199,38 +184,38 @@ class HardwareSimulator:
                         background='lightgray')
 
         # 添加滚动条
-        scrollbar = ttk.Scrollbar(table_frame, orient=tk.VERTICAL, command=self.params_table.yview)
-        self.params_table.configure(yscrollcommand=scrollbar.set)
+        scrollbar = ttk.Scrollbar(table_frame, orient=tk.VERTICAL, command=self.params_tree.yview)
+        self.params_tree.configure(yscrollcommand=scrollbar.set)
 
-        self.params_table.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.params_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
         # 绑定双击编辑事件
-        self.params_table.bind("<Double-1>", self.on_param_double_click)
+        self.params_tree.bind("<Double-1>", self.on_param_double_click)
 
         # 填充数据
         self.update_params_table()
 
     def setup_watch_table(self, parent):
-        """设置变量监视表格（波形列为按钮样式）"""
+        """设置变量监视表格"""
         # 创建表格框架
         table_frame = tk.Frame(parent, bg='white')
         table_frame.pack(fill=tk.BOTH, expand=True)
 
-        # 创建表格
-        columns = ("索引", "变量名称", "参数数值", "波形")
-        self.watch_table = ttk.Treeview(table_frame, columns=columns, show="headings", height=8)
+        # 创建Treeview表格
+        self.watch_tree = ttk.Treeview(table_frame, columns=("索引", "变量名称", "参数数值", "波形"),
+                                       show="headings", height=6)
 
         # 设置列属性 - 索引列宽度缩小
-        self.watch_table.heading("索引", text="索引")
-        self.watch_table.heading("变量名称", text="变量名称")
-        self.watch_table.heading("参数数值", text="参数数值")
-        self.watch_table.heading("波形", text="波形")
+        self.watch_tree.heading("索引", text="索引")
+        self.watch_tree.heading("变量名称", text="变量名称")
+        self.watch_tree.heading("参数数值", text="参数数值")
+        self.watch_tree.heading("波形", text="波形")
 
-        self.watch_table.column("索引", width=40, anchor=tk.CENTER)  # 缩小索引列宽度
-        self.watch_table.column("变量名称", width=100, anchor=tk.CENTER)
-        self.watch_table.column("参数数值", width=100, anchor=tk.CENTER)
-        self.watch_table.column("波形", width=60, anchor=tk.CENTER)
+        self.watch_tree.column("索引", width=40, anchor=tk.CENTER)  # 缩小索引列宽度
+        self.watch_tree.column("变量名称", width=100, anchor=tk.CENTER)
+        self.watch_tree.column("参数数值", width=100, anchor=tk.CENTER)
+        self.watch_tree.column("波形", width=60, anchor=tk.CENTER)
 
         # 设置表格样式，增加分隔线
         style = ttk.Style()
@@ -241,14 +226,14 @@ class HardwareSimulator:
                         relief='solid')
 
         # 添加滚动条
-        scrollbar = ttk.Scrollbar(table_frame, orient=tk.VERTICAL, command=self.watch_table.yview)
-        self.watch_table.configure(yscrollcommand=scrollbar.set)
+        scrollbar = ttk.Scrollbar(table_frame, orient=tk.VERTICAL, command=self.watch_tree.yview)
+        self.watch_tree.configure(yscrollcommand=scrollbar.set)
 
-        self.watch_table.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.watch_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
         # 绑定波形按钮点击事件
-        self.watch_table.bind("<Button-1>", self.on_waveform_click)
+        self.watch_tree.bind("<Button-1>", self.on_waveform_click)
 
         # 填充数据
         self.update_watch_table()
@@ -256,12 +241,12 @@ class HardwareSimulator:
     def update_params_table(self):
         """更新参数表格"""
         # 清空表格
-        for item in self.params_table.get_children():
-            self.params_table.delete(item)
+        for item in self.params_tree.get_children():
+            self.params_tree.delete(item)
 
         # 添加数据
         for idx, param in enumerate(self.input_params, 1):
-            self.params_table.insert("", tk.END, values=(
+            self.params_tree.insert("", tk.END, values=(
                 idx,
                 param.get("param", ""),
                 param.get("val", "")
@@ -270,12 +255,12 @@ class HardwareSimulator:
     def update_watch_table(self):
         """更新监视变量表格"""
         # 清空表格
-        for item in self.watch_table.get_children():
-            self.watch_table.delete(item)
+        for item in self.watch_tree.get_children():
+            self.watch_tree.delete(item)
 
         # 添加数据
         for idx, var in enumerate(self.watch_variables, 1):
-            self.watch_table.insert("", tk.END, values=(
+            self.watch_tree.insert("", tk.END, values=(
                 idx,
                 var.get("variable", ""),
                 var.get("val", ""),
@@ -284,26 +269,26 @@ class HardwareSimulator:
 
     def on_param_double_click(self, event):
         """参数数值双击编辑事件"""
-        item = self.params_table.selection()
+        item = self.params_tree.selection()
         if not item:
             return
 
         item = item[0]
-        column = self.params_table.identify_column(event.x)
+        column = self.params_tree.identify_column(event.x)
 
         # 只允许编辑"参数数值"列（第3列）
         if column == "#3":
             # 获取当前值
-            current_values = self.params_table.item(item, "values")
+            current_values = self.params_tree.item(item, "values")
             current_value = current_values[2]
 
             # 获取单元格位置
-            bbox = self.params_table.bbox(item, column)
+            bbox = self.params_tree.bbox(item, column)
             if not bbox:
                 return
 
             # 创建编辑框
-            edit_frame = tk.Frame(self.params_table, borderwidth=1, relief="solid")
+            edit_frame = tk.Frame(self.params_tree, borderwidth=1, relief="solid")
             edit_frame.place(x=bbox[0], y=bbox[1], width=bbox[2], height=bbox[3])
 
             entry = tk.Entry(edit_frame, font=("Arial", 10))
@@ -316,7 +301,7 @@ class HardwareSimulator:
                 new_value = entry.get()
                 # 更新表格数据
                 new_values = (current_values[0], current_values[1], new_value)
-                self.params_table.item(item, values=new_values)
+                self.params_tree.item(item, values=new_values)
 
                 # 更新内存中的数据
                 idx = int(current_values[0]) - 1
@@ -335,11 +320,11 @@ class HardwareSimulator:
 
     def on_waveform_click(self, event):
         """波形按钮点击事件"""
-        item = self.watch_table.identify_row(event.y)
-        column = self.watch_table.identify_column(event.x)
+        item = self.watch_tree.identify_row(event.y)
+        column = self.watch_tree.identify_column(event.x)
 
         if item and column == "#4":  # 点击的是波形列
-            values = self.watch_table.item(item, "values")
+            values = self.watch_tree.item(item, "values")
             variable_name = values[1]  # 变量名称在第二列
             self.add_log(f"点击了变量 '{variable_name}' 的波形按钮")
             messagebox.showinfo("波形显示", f"显示变量 {variable_name} 的波形")
