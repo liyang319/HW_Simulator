@@ -10,8 +10,18 @@ class HardwareSimulator:
     def __init__(self, root):
         self.root = root
         self.root.title("硬件仿真系统 v1.0.0")
-        self.root.geometry("900x700")
-        self.root.configure(bg='white')
+        # self.root.geometry("900x700")
+        # self.root.configure(bg='white')
+        # 获取屏幕尺寸并设置窗口大小
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+        print(f"{screen_width}x{screen_height}")
+
+        # 设置窗口为屏幕大小，并定位到左上角
+        self.root.geometry(f"{screen_width}x{screen_height}")
+
+        # 禁止调整窗口大小
+        # self.root.resizable(False, False)
 
         # 状态变量
         self.model_file = None
@@ -217,7 +227,7 @@ class HardwareSimulator:
         # 表头标签 - 使用固定宽度
         headers = ["索引", "输入参数", "参数数值"]
         # 设置字符宽度 - 增加列宽确保对齐
-        widths = [6, 15, 15]  # 字符宽度
+        widths = [10, 48, 48]  # 字符宽度
 
         header_labels = []
         for i, (header, width) in enumerate(zip(headers, widths)):
@@ -239,7 +249,7 @@ class HardwareSimulator:
 
         # 创建Canvas和Scrollbar用于滚动
         canvas = tk.Canvas(content_frame, bg='white', highlightthickness=0)
-        scrollbar = ttk.Scrollbar(content_frame, orient=tk.VERTICAL, command=canvas.yview)
+        scrollbar = tk.Scrollbar(content_frame, orient=tk.VERTICAL, command=canvas.yview, width=3)
         scrollable_frame = tk.Frame(canvas, bg='white')
 
         scrollable_frame.bind(
@@ -282,7 +292,7 @@ class HardwareSimulator:
         # 表头标签 - 使用固定宽度
         headers = ["索引", "变量名称", "参数数值", "波形"]
         # 调整列宽：增加变量名称和参数数值列宽，缩小波形列宽
-        widths = [6, 18, 18, 8]  # 字符宽度 - 调整后的宽度
+        widths = [10, 50, 50, 10]  # 字符宽度 - 调整后的宽度
 
         header_labels = []
         for i, (header, width) in enumerate(zip(headers, widths)):
@@ -304,7 +314,7 @@ class HardwareSimulator:
 
         # 创建Canvas和Scrollbar用于滚动
         canvas = tk.Canvas(content_frame, bg='white', highlightthickness=0)
-        scrollbar = ttk.Scrollbar(content_frame, orient=tk.VERTICAL, command=canvas.yview)
+        scrollbar = tk.Scrollbar(content_frame, orient=tk.VERTICAL, command=canvas.yview, width=3)
         scrollable_frame = tk.Frame(canvas, bg='white')
 
         scrollable_frame.bind(
@@ -428,7 +438,7 @@ class HardwareSimulator:
             value_label.pack(side=tk.LEFT, fill=tk.BOTH)
 
             # 波形按钮列 - 使用表头相同的宽度，增加行高度
-            wave_button = tk.Label(row_frame, text="波形", font=('Arial', 10),
+            wave_button = tk.Label(row_frame, text="⁓", font=('Arial', 10),
                                    bg='lightblue', width=self.watch_header_widths[3],
                                    height=2, relief='raised', bd=1, anchor=tk.CENTER, cursor="hand2")
             wave_button.pack(side=tk.LEFT, fill=tk.BOTH)
