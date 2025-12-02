@@ -205,197 +205,287 @@ class HardwareSimulator:
         log_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
     def setup_params_table(self, parent):
-        """设置参数输入表格"""
+        """设置参数输入表格 - 使用Frame和Label创建真实表格"""
         # 创建带边框的表格框架
         table_frame = tk.Frame(parent, bg='black', bd=1, relief='solid')
         table_frame.pack(fill=tk.BOTH, expand=True)
 
-        # 创建Treeview表格
-        self.params_tree = ttk.Treeview(table_frame, columns=("索引", "输入参数", "参数数值"),
-                                        show="headings", height=8)
+        # 创建表头
+        header_frame = tk.Frame(table_frame, bg='lightgray')
+        header_frame.pack(fill=tk.X)
 
-        # 设置列属性
-        self.params_tree.heading("索引", text="索引")
-        self.params_tree.heading("输入参数", text="输入参数")
-        self.params_tree.heading("参数数值", text="参数数值")
+        # 表头标签 - 使用固定宽度
+        headers = ["索引", "输入参数", "参数数值"]
+        # 设置字符宽度而不是像素宽度
+        widths = [8, 15, 15]  # 字符宽度
 
-        # 设置列宽度
-        self.params_tree.column("索引", width=60, anchor=tk.CENTER, minwidth=60)
-        self.params_tree.column("输入参数", width=120, anchor=tk.CENTER, minwidth=120)
-        self.params_tree.column("参数数值", width=120, anchor=tk.CENTER, minwidth=120)
+        header_labels = []
+        for i, (header, width) in enumerate(zip(headers, widths)):
+            label = tk.Label(header_frame, text=header, font=('Arial', 10, 'bold'),
+                             bg='lightgray', width=width, relief='solid', bd=1,
+                             anchor=tk.CENTER)
+            if i == len(headers) - 1:  # 最后一列填充剩余空间
+                label.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+            else:
+                label.pack(side=tk.LEFT, fill=tk.BOTH)
+            header_labels.append(label)
 
-        # 配置表格样式
-        style = ttk.Style()
-        style.configure("Treeview",
-                        font=('Arial', 10),
-                        rowheight=25,
-                        borderwidth=1,
-                        relief='solid')
-        style.configure("Treeview.Heading",
-                        font=('Arial', 10, 'bold'),
-                        background='lightgray')
+        # 存储表头宽度信息
+        self.param_header_widths = widths
 
-        # 添加滚动条
-        scrollbar = ttk.Scrollbar(table_frame, orient=tk.VERTICAL, command=self.params_tree.yview)
-        self.params_tree.configure(yscrollcommand=scrollbar.set)
+        # 创建表格内容框架（带滚动条）
+        content_frame = tk.Frame(table_frame, bg='white')
+        content_frame.pack(fill=tk.BOTH, expand=True)
 
-        self.params_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        # 创建Canvas和Scrollbar用于滚动
+        canvas = tk.Canvas(content_frame, bg='white', highlightthickness=0)
+        scrollbar = ttk.Scrollbar(content_frame, orient=tk.VERTICAL, command=canvas.yview)
+        scrollable_frame = tk.Frame(canvas, bg='white')
+
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        # 存储表格行引用
+        self.param_rows = []
+
+        # 配置画布滚动
+        def _on_mousewheel(event):
+            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+        canvas.bind("<MouseWheel>", _on_mousewheel)
+        scrollable_frame.bind("<MouseWheel>", _on_mousewheel)
+
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-        # 绑定双击编辑事件
-        self.params_tree.bind("<Double-1>", self.on_param_double_click)
+        self.params_content_frame = scrollable_frame
+        self.params_canvas = canvas
 
         # 填充数据
         self.update_params_table()
 
     def setup_watch_table(self, parent):
-        """设置变量监视表格"""
+        """设置变量监视表格 - 使用Frame和Label创建真实表格"""
         # 创建带边框的表格框架
         table_frame = tk.Frame(parent, bg='black', bd=1, relief='solid')
         table_frame.pack(fill=tk.BOTH, expand=True)
 
-        # 创建Treeview表格
-        self.watch_tree = ttk.Treeview(table_frame, columns=("索引", "变量名称", "参数数值", "波形"),
-                                       show="headings", height=8)
+        # 创建表头
+        header_frame = tk.Frame(table_frame, bg='lightgray')
+        header_frame.pack(fill=tk.X)
 
-        # 设置列属性
-        self.watch_tree.heading("索引", text="索引")
-        self.watch_tree.heading("变量名称", text="变量名称")
-        self.watch_tree.heading("参数数值", text="参数数值")
-        self.watch_tree.heading("波形", text="波形")
+        # 表头标签 - 使用固定宽度
+        headers = ["索引", "变量名称", "参数数值", "波形"]
+        widths = [8, 12, 12, 8]  # 字符宽度
 
-        # 设置列宽度
-        self.watch_tree.column("索引", width=60, anchor=tk.CENTER, minwidth=60)
-        self.watch_tree.column("变量名称", width=100, anchor=tk.CENTER, minwidth=100)
-        self.watch_tree.column("参数数值", width=100, anchor=tk.CENTER, minwidth=100)
-        self.watch_tree.column("波形", width=60, anchor=tk.CENTER, minwidth=60)
+        header_labels = []
+        for i, (header, width) in enumerate(zip(headers, widths)):
+            label = tk.Label(header_frame, text=header, font=('Arial', 10, 'bold'),
+                             bg='lightgray', width=width, relief='solid', bd=1,
+                             anchor=tk.CENTER)
+            if i == len(headers) - 1:  # 最后一列填充剩余空间
+                label.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+            else:
+                label.pack(side=tk.LEFT, fill=tk.BOTH)
+            header_labels.append(label)
 
-        # 配置表格样式
-        style = ttk.Style()
-        style.configure("Treeview",
-                        font=('Arial', 10),
-                        rowheight=25,
-                        borderwidth=1,
-                        relief='solid')
-        style.configure("Treeview.Heading",
-                        font=('Arial', 10, 'bold'),
-                        background='lightgray')
+        # 存储表头宽度信息
+        self.watch_header_widths = widths
 
-        # 添加滚动条
-        scrollbar = ttk.Scrollbar(table_frame, orient=tk.VERTICAL, command=self.watch_tree.yview)
-        self.watch_tree.configure(yscrollcommand=scrollbar.set)
+        # 创建表格内容框架（带滚动条）
+        content_frame = tk.Frame(table_frame, bg='white')
+        content_frame.pack(fill=tk.BOTH, expand=True)
 
-        self.watch_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        # 创建Canvas和Scrollbar用于滚动
+        canvas = tk.Canvas(content_frame, bg='white', highlightthickness=0)
+        scrollbar = ttk.Scrollbar(content_frame, orient=tk.VERTICAL, command=canvas.yview)
+        scrollable_frame = tk.Frame(canvas, bg='white')
+
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        # 存储表格行引用
+        self.watch_rows = []
+
+        # 配置画布滚动
+        def _on_mousewheel(event):
+            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+        canvas.bind("<MouseWheel>", _on_mousewheel)
+        scrollable_frame.bind("<MouseWheel>", _on_mousewheel)
+
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-        # 绑定波形按钮点击事件
-        self.watch_tree.bind("<Button-1>", self.on_waveform_click)
+        self.watch_content_frame = scrollable_frame
+        self.watch_canvas = canvas
 
         # 填充数据
         self.update_watch_table()
 
     def update_params_table(self):
         """更新参数表格"""
-        # 清空表格
-        for item in self.params_tree.get_children():
-            self.params_tree.delete(item)
+        # 清空现有行
+        for widget in self.params_content_frame.winfo_children():
+            widget.destroy()
+
+        self.param_rows = []
 
         print(f"正在更新参数表格，数据条数: {len(self.input_params)}")
 
-        # 添加数据
+        # 添加数据行 - 使用与表头相同的宽度
         for idx, param in enumerate(self.input_params, 1):
             param_name = param.get("param", f"参数{idx}")
             param_value = param.get("val", "")
             print(f"添加参数: {idx}, {param_name}, {param_value}")
 
-            self.params_tree.insert("", tk.END, values=(
-                idx,
-                param_name,
-                param_value
-            ))
+            # 创建一行
+            row_frame = tk.Frame(self.params_content_frame, bg='white')
+            row_frame.pack(fill=tk.X)
+
+            # 索引列 - 使用表头相同的宽度
+            index_label = tk.Label(row_frame, text=str(idx), font=('Arial', 10),
+                                   bg='white', width=self.param_header_widths[0],
+                                   relief='solid', bd=1, anchor=tk.CENTER)
+            index_label.pack(side=tk.LEFT, fill=tk.BOTH)
+
+            # 参数名列 - 使用表头相同的宽度
+            name_label = tk.Label(row_frame, text=param_name, font=('Arial', 10),
+                                  bg='white', width=self.param_header_widths[1],
+                                  relief='solid', bd=1, anchor=tk.CENTER)
+            name_label.pack(side=tk.LEFT, fill=tk.BOTH)
+
+            # 参数值列 - 使用表头相同的宽度，最后一列填充剩余空间
+            value_label = tk.Label(row_frame, text=param_value, font=('Arial', 10),
+                                   bg='white', width=self.param_header_widths[2],
+                                   relief='solid', bd=1, anchor=tk.CENTER, cursor="hand2")
+            value_label.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+            # 绑定双击编辑事件
+            value_label.bind("<Double-1>",
+                             lambda e, idx=idx - 1, label=value_label:
+                             self.edit_param_value(idx, label))
+
+            # 存储行引用
+            self.param_rows.append({
+                'frame': row_frame,
+                'index': index_label,
+                'name': name_label,
+                'value': value_label
+            })
+
+        # 更新滚动区域
+        self.params_content_frame.update_idletasks()
+        self.params_canvas.configure(scrollregion=self.params_canvas.bbox("all"))
 
     def update_watch_table(self):
         """更新监视变量表格"""
-        # 清空表格
-        for item in self.watch_tree.get_children():
-            self.watch_tree.delete(item)
+        # 清空现有行
+        for widget in self.watch_content_frame.winfo_children():
+            widget.destroy()
+
+        self.watch_rows = []
 
         print(f"正在更新监视表格，数据条数: {len(self.watch_variables)}")
 
-        # 添加数据
+        # 添加数据行 - 使用与表头相同的宽度
         for idx, var in enumerate(self.watch_variables, 1):
             var_name = var.get("variable", f"变量{idx}")
             var_value = var.get("val", "")
             print(f"添加变量: {idx}, {var_name}, {var_value}")
 
-            self.watch_tree.insert("", tk.END, values=(
-                idx,
-                var_name,
-                var_value,
-                "波形"
-            ))
+            # 创建一行
+            row_frame = tk.Frame(self.watch_content_frame, bg='white')
+            row_frame.pack(fill=tk.X)
 
-    def on_param_double_click(self, event):
-        """参数数值双击编辑事件"""
-        item = self.params_tree.selection()
-        if not item:
-            return
+            # 索引列 - 使用表头相同的宽度
+            index_label = tk.Label(row_frame, text=str(idx), font=('Arial', 10),
+                                   bg='white', width=self.watch_header_widths[0],
+                                   relief='solid', bd=1, anchor=tk.CENTER)
+            index_label.pack(side=tk.LEFT, fill=tk.BOTH)
 
-        item = item[0]
-        column = self.params_tree.identify_column(event.x)
+            # 变量名列 - 使用表头相同的宽度
+            name_label = tk.Label(row_frame, text=var_name, font=('Arial', 10),
+                                  bg='white', width=self.watch_header_widths[1],
+                                  relief='solid', bd=1, anchor=tk.CENTER)
+            name_label.pack(side=tk.LEFT, fill=tk.BOTH)
 
-        # 只允许编辑"参数数值"列（第3列）
-        if column == "#3":
-            # 获取当前值
-            current_values = self.params_tree.item(item, "values")
-            current_value = current_values[2]
+            # 变量值列 - 使用表头相同的宽度
+            value_label = tk.Label(row_frame, text=var_value, font=('Arial', 10),
+                                   bg='white', width=self.watch_header_widths[2],
+                                   relief='solid', bd=1, anchor=tk.CENTER)
+            value_label.pack(side=tk.LEFT, fill=tk.BOTH)
 
-            # 获取单元格位置
-            bbox = self.params_tree.bbox(item, column)
-            if not bbox:
-                return
+            # 波形按钮列 - 使用表头相同的宽度
+            wave_button = tk.Label(row_frame, text="波形", font=('Arial', 10),
+                                   bg='lightblue', width=self.watch_header_widths[3],
+                                   relief='raised', bd=1, anchor=tk.CENTER, cursor="hand2")
+            wave_button.pack(side=tk.LEFT, fill=tk.BOTH)
 
-            # 创建编辑框
-            edit_frame = tk.Frame(self.params_tree, borderwidth=1, relief="solid", bg='white')
-            edit_frame.place(x=bbox[0], y=bbox[1], width=bbox[2], height=bbox[3])
+            # 绑定波形按钮点击事件
+            wave_button.bind("<Button-1>",
+                             lambda e, name=var_name: self.on_waveform_click_new(name))
 
-            entry = tk.Entry(edit_frame, font=("Arial", 10), bg='white')
-            entry.insert(0, current_value)
-            entry.pack(fill=tk.BOTH, expand=True)
-            entry.focus_set()
-            entry.select_range(0, tk.END)
+            # 存储行引用
+            self.watch_rows.append({
+                'frame': row_frame,
+                'index': index_label,
+                'name': name_label,
+                'value': value_label,
+                'wave': wave_button
+            })
 
-            def save_edit(event=None):
-                new_value = entry.get()
-                # 更新表格数据
-                new_values = (current_values[0], current_values[1], new_value)
-                self.params_tree.item(item, values=new_values)
+        # 更新滚动区域
+        self.watch_content_frame.update_idletasks()
+        self.watch_canvas.configure(scrollregion=self.watch_canvas.bbox("all"))
 
-                # 更新内存中的数据
-                idx = int(current_values[0]) - 1
-                if 0 <= idx < len(self.input_params):
-                    self.input_params[idx]["val"] = new_value
+    def edit_param_value(self, idx, label):
+        """编辑参数值"""
+        current_value = label.cget("text")
 
-                edit_frame.destroy()
-                self.add_log(f"修改参数 {current_values[1]} 的值为: {new_value}")
+        # 创建编辑窗口
+        edit_win = tk.Toplevel(self.root)
+        edit_win.title("编辑参数值")
+        edit_win.geometry("300x100")
+        edit_win.transient(self.root)
+        edit_win.grab_set()
 
-            def cancel_edit(event=None):
-                edit_frame.destroy()
+        tk.Label(edit_win, text="输入新值:").pack(pady=5)
 
-            entry.bind("<Return>", save_edit)
-            entry.bind("<Escape>", cancel_edit)
-            entry.bind("<FocusOut>", lambda e: save_edit())
+        entry = tk.Entry(edit_win, width=30)
+        entry.insert(0, current_value)
+        entry.pack(pady=5)
+        entry.focus_set()
+        entry.select_range(0, tk.END)
 
-    def on_waveform_click(self, event):
+        def save_edit():
+            new_value = entry.get()
+            label.config(text=new_value)
+
+            # 更新内存中的数据
+            if 0 <= idx < len(self.input_params):
+                self.input_params[idx]["val"] = new_value
+
+            self.add_log(f"修改参数值为: {new_value}")
+            edit_win.destroy()
+
+        tk.Button(edit_win, text="确定", command=save_edit).pack(pady=5)
+        entry.bind("<Return>", lambda e: save_edit())
+
+    def on_waveform_click_new(self, variable_name):
         """波形按钮点击事件"""
-        item = self.watch_tree.identify_row(event.y)
-        column = self.watch_tree.identify_column(event.x)
-
-        if item and column == "#4":  # 点击的是波形列
-            values = self.watch_tree.item(item, "values")
-            variable_name = values[1]  # 变量名称在第二列
-            self.add_log(f"点击了变量 '{variable_name}' 的波形按钮")
-            messagebox.showinfo("波形显示", f"显示变量 {variable_name} 的波形")
+        self.add_log(f"点击了变量 '{variable_name}' 的波形按钮")
+        messagebox.showinfo("波形显示", f"显示变量 {variable_name} 的波形")
 
     def toggle_connection(self):
         """切换连接状态"""
