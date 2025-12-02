@@ -216,8 +216,8 @@ class HardwareSimulator:
 
         # 表头标签 - 使用固定宽度
         headers = ["索引", "输入参数", "参数数值"]
-        # 设置字符宽度而不是像素宽度
-        widths = [8, 15, 15]  # 字符宽度
+        # 设置字符宽度 - 增加列宽确保对齐
+        widths = [6, 15, 15]  # 字符宽度
 
         header_labels = []
         for i, (header, width) in enumerate(zip(headers, widths)):
@@ -281,7 +281,8 @@ class HardwareSimulator:
 
         # 表头标签 - 使用固定宽度
         headers = ["索引", "变量名称", "参数数值", "波形"]
-        widths = [8, 12, 12, 8]  # 字符宽度
+        # 调整列宽：增加变量名称和参数数值列宽，缩小波形列宽
+        widths = [6, 18, 18, 8]  # 字符宽度 - 调整后的宽度
 
         header_labels = []
         for i, (header, width) in enumerate(zip(headers, widths)):
@@ -349,26 +350,26 @@ class HardwareSimulator:
             param_value = param.get("val", "")
             print(f"添加参数: {idx}, {param_name}, {param_value}")
 
-            # 创建一行
+            # 创建一行 - 增加行高度
             row_frame = tk.Frame(self.params_content_frame, bg='white')
             row_frame.pack(fill=tk.X)
 
-            # 索引列 - 使用表头相同的宽度
+            # 索引列 - 使用表头相同的宽度，增加行高度
             index_label = tk.Label(row_frame, text=str(idx), font=('Arial', 10),
                                    bg='white', width=self.param_header_widths[0],
-                                   relief='solid', bd=1, anchor=tk.CENTER)
+                                   height=2, relief='solid', bd=1, anchor=tk.CENTER)
             index_label.pack(side=tk.LEFT, fill=tk.BOTH)
 
-            # 参数名列 - 使用表头相同的宽度
+            # 参数名列 - 使用表头相同的宽度，增加行高度
             name_label = tk.Label(row_frame, text=param_name, font=('Arial', 10),
                                   bg='white', width=self.param_header_widths[1],
-                                  relief='solid', bd=1, anchor=tk.CENTER)
+                                  height=2, relief='solid', bd=1, anchor=tk.CENTER)
             name_label.pack(side=tk.LEFT, fill=tk.BOTH)
 
-            # 参数值列 - 使用表头相同的宽度，最后一列填充剩余空间
+            # 参数值列 - 使用表头相同的宽度，增加行高度，最后一列填充剩余空间
             value_label = tk.Label(row_frame, text=param_value, font=('Arial', 10),
                                    bg='white', width=self.param_header_widths[2],
-                                   relief='solid', bd=1, anchor=tk.CENTER, cursor="hand2")
+                                   height=2, relief='solid', bd=1, anchor=tk.CENTER, cursor="hand2")
             value_label.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
             # 绑定双击编辑事件
@@ -404,32 +405,32 @@ class HardwareSimulator:
             var_value = var.get("val", "")
             print(f"添加变量: {idx}, {var_name}, {var_value}")
 
-            # 创建一行
+            # 创建一行 - 增加行高度
             row_frame = tk.Frame(self.watch_content_frame, bg='white')
             row_frame.pack(fill=tk.X)
 
-            # 索引列 - 使用表头相同的宽度
+            # 索引列 - 使用表头相同的宽度，增加行高度
             index_label = tk.Label(row_frame, text=str(idx), font=('Arial', 10),
                                    bg='white', width=self.watch_header_widths[0],
-                                   relief='solid', bd=1, anchor=tk.CENTER)
+                                   height=2, relief='solid', bd=1, anchor=tk.CENTER)
             index_label.pack(side=tk.LEFT, fill=tk.BOTH)
 
-            # 变量名列 - 使用表头相同的宽度
+            # 变量名列 - 使用表头相同的宽度，增加行高度
             name_label = tk.Label(row_frame, text=var_name, font=('Arial', 10),
                                   bg='white', width=self.watch_header_widths[1],
-                                  relief='solid', bd=1, anchor=tk.CENTER)
+                                  height=2, relief='solid', bd=1, anchor=tk.CENTER)
             name_label.pack(side=tk.LEFT, fill=tk.BOTH)
 
-            # 变量值列 - 使用表头相同的宽度
+            # 变量值列 - 使用表头相同的宽度，增加行高度
             value_label = tk.Label(row_frame, text=var_value, font=('Arial', 10),
                                    bg='white', width=self.watch_header_widths[2],
-                                   relief='solid', bd=1, anchor=tk.CENTER)
+                                   height=2, relief='solid', bd=1, anchor=tk.CENTER)
             value_label.pack(side=tk.LEFT, fill=tk.BOTH)
 
-            # 波形按钮列 - 使用表头相同的宽度
+            # 波形按钮列 - 使用表头相同的宽度，增加行高度
             wave_button = tk.Label(row_frame, text="波形", font=('Arial', 10),
                                    bg='lightblue', width=self.watch_header_widths[3],
-                                   relief='raised', bd=1, anchor=tk.CENTER, cursor="hand2")
+                                   height=2, relief='raised', bd=1, anchor=tk.CENTER, cursor="hand2")
             wave_button.pack(side=tk.LEFT, fill=tk.BOTH)
 
             # 绑定波形按钮点击事件
