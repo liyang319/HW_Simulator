@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, filedialog, scrolledtext
+from tkinter import ttk, filedialog, messagebox
 import json
 import time
 import threading
@@ -11,128 +11,171 @@ class HardwareSimulator:
         self.root = root
         self.root.title("硬件仿真系统 v1.0.0")
         self.root.geometry("900x700")
+        self.root.configure(bg='white')
 
-        # 全局变量
-        self.model_running = False
+        # 状态变量
+        self.model_file = None
+        self.is_running = False
         self.start_time = None
         self.timer_thread = None
+        self.stop_timer = False
         self.is_connected = False
 
-        self.setup_ui()
-        self.load_initial_data()
+        # 加载参数和变量数据
+        self.input_params = self.load_json_file("input_params.json")
+        self.watch_variables = self.load_json_file("watch_variables.json")
 
-    def setup_ui(self):
+        self.create_widgets()
+        self.add_log("系统启动成功...")
+
+    def load_json_file(self, filename):
+        """加载JSON文件，如果文件不存在则返回空列表"""
+        try:
+            with open(filename, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except FileNotFoundError:
+            print(f"警告: 文件 {filename} 不存在")
+            return []
+        except json.JSONDecodeError:
+            print(f"错误: 文件 {filename} JSON格式错误")
+            return []
+
+    def create_widgets(self):
         # 主标题
         title_label = tk.Label(self.root, text="硬件仿真系统 v1.0.0",
-                               font=("Arial", 16, "bold"))
+                               font=("Arial", 16, "bold"), bg='white')
         title_label.pack(pady=10)
 
         # 创建主容器
-        main_container = tk.Frame(self.root)
-        main_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+        main_container = tk.Frame(self.root, bg='white')
+        main_container.pack(fill=tk.BOTH, expand=True, padx=20, pady=5)
 
+        # 1. 顶部控制区域 - 按照图片布局重新设计
         # 第一行：目标机区域
-        target_frame = tk.Frame(main_container)
-        target_frame.pack(fill=tk.X, pady=5)
+        target_frame = tk.Frame(main_container, bg='white')
+        target_frame.pack(fill=tk.X, pady=(0, 10), anchor='w')
 
-        tk.Label(target_frame, text="目标机:", font=("Arial", 10)).pack(side=tk.LEFT, padx=5)
-        self.target_entry = tk.Entry(target_frame, width=30, font=("Arial", 10))
-        self.target_entry.pack(side=tk.LEFT, padx=5)
+        tk.Label(target_frame, text="目标机:", font=("Arial", 10), bg='white').pack(side=tk.LEFT, padx=(0, 5))
+
+        self.target_entry = tk.Entry(target_frame, width=20, font=("Arial", 10))
+        self.target_entry.pack(side=tk.LEFT, padx=(0, 10))
         self.target_entry.insert(0, "192.168.1.100")
 
-        self.connect_button = tk.Button(target_frame, text="连接", width=8,
-                                        font=("Arial", 10), command=self.toggle_connection)
-        self.connect_button.pack(side=tk.LEFT, padx=5)
+        self.connect_button = tk.Button(target_frame, text="连接", width=8, font=("Arial", 10),
+                                        command=self.toggle_connection)
+        self.connect_button.pack(side=tk.LEFT)
 
         # 第二行：模型操作区域
-        model_ops_frame = tk.Frame(main_container)
-        model_ops_frame.pack(fill=tk.X, pady=5)
+        model_frame = tk.Frame(main_container, bg='white')
+        model_frame.pack(fill=tk.X, pady=(0, 15), anchor='w')
 
-        # 左侧按钮组
-        left_ops_frame = tk.Frame(model_ops_frame)
-        left_ops_frame.pack(side=tk.LEFT, fill=tk.X)
+        # 左侧：模型选择相关
+        left_model_frame = tk.Frame(model_frame, bg='white')
+        left_model_frame.pack(side=tk.LEFT, anchor='w')
 
-        self.select_model_btn = tk.Button(left_ops_frame, text="选择模型", width=10,
-                                          font=("Arial", 10), command=self.select_model)
-        self.select_model_btn.pack(side=tk.LEFT, padx=5)
+        # 选择模型按钮和文件名显示
+        select_model_frame = tk.Frame(left_model_frame, bg='white')
+        select_model_frame.pack(side=tk.LEFT, anchor='w', padx=(0, 20))
 
-        self.model_file_label = tk.Label(left_ops_frame, text="未选择文件",
-                                         width=20, relief=tk.SUNKEN, bg="white", font=("Arial", 10))
-        self.model_file_label.pack(side=tk.LEFT, padx=5)
+        self.select_model_btn = tk.Button(select_model_frame, text="选择模型", width=10, font=("Arial", 10),
+                                          command=self.select_model)
+        self.select_model_btn.pack(side=tk.LEFT, padx=(0, 5))
 
-        self.download_model_btn = tk.Button(left_ops_frame, text="模型下载", width=10,
-                                            font=("Arial", 10), command=self.download_model)
-        self.download_model_btn.pack(side=tk.LEFT, padx=5)
+        # 模型文件名显示（文本标签，不是编辑框）
+        self.model_file_label = tk.Label(select_model_frame, text="未选择文件", font=("Arial", 10),
+                                         width=15, relief=tk.SUNKEN, bg="white", anchor='w')
+        self.model_file_label.pack(side=tk.LEFT)
 
-        # 右侧状态组
-        right_ops_frame = tk.Frame(model_ops_frame)
-        right_ops_frame.pack(side=tk.RIGHT, fill=tk.X)
+        # 模型下载按钮和状态显示
+        download_frame = tk.Frame(left_model_frame, bg='white')
+        download_frame.pack(side=tk.LEFT, anchor='w', padx=(0, 20))
 
-        self.download_status_label = tk.Label(right_ops_frame, text="模型下载状态: 未下载",
-                                              relief=tk.SUNKEN, width=20, bg="white", font=("Arial", 10))
-        self.download_status_label.pack(side=tk.LEFT, padx=5)
+        self.download_model_btn = tk.Button(download_frame, text="模型下载", width=10, font=("Arial", 10),
+                                            command=self.download_model)
+        self.download_model_btn.pack(side=tk.LEFT, padx=(0, 5))
 
-        self.run_button = tk.Button(right_ops_frame, text="模型运行", width=10,
-                                    font=("Arial", 10), command=self.toggle_model_run)
-        self.run_button.pack(side=tk.LEFT, padx=5)
+        # 模型下载状态显示（文本标签）
+        self.download_status_label = tk.Label(download_frame, text="未下载", font=("Arial", 10),
+                                              width=12, relief=tk.SUNKEN, bg="white", anchor='w')
+        self.download_status_label.pack(side=tk.LEFT)
 
-        self.time_label = tk.Label(right_ops_frame, text="00:00:00",
-                                   font=("Arial", 10), width=10, relief=tk.SUNKEN, bg="white")
-        self.time_label.pack(side=tk.LEFT, padx=5)
+        # 右侧：模型运行和时间显示
+        right_model_frame = tk.Frame(model_frame, bg='white')
+        right_model_frame.pack(side=tk.RIGHT, anchor='e')
 
-        # 中间部分：参数表格和监视表格
-        middle_frame = tk.Frame(main_container)
-        middle_frame.pack(fill=tk.BOTH, expand=True, pady=10)
+        self.run_button = tk.Button(right_model_frame, text="模型运行", width=10, font=("Arial", 10),
+                                    command=self.toggle_model_run)
+        self.run_button.pack(side=tk.LEFT, padx=(0, 5))
 
-        # 左侧：模型参数输入
-        params_container = tk.Frame(middle_frame)
-        params_container.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
+        # 运行时间显示（文本标签）
+        self.time_label = tk.Label(right_model_frame, text="00:00:00", font=("Arial", 10),
+                                   width=12, relief=tk.SUNKEN, bg="white", anchor='center')
+        self.time_label.pack(side=tk.LEFT)
 
-        params_header = tk.Frame(params_container)
-        params_header.pack(fill=tk.X, pady=5)
+        # 2. 中间区域：参数表格和监视表格 - 确保对齐
+        middle_frame = tk.Frame(main_container, bg='white')
+        middle_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 15))
 
-        tk.Label(params_header, text="模型参数输入", font=("Arial", 12, "bold")).pack(side=tk.LEFT)
+        # 配置网格权重确保两个表格对齐
+        middle_frame.columnconfigure(0, weight=1)
+        middle_frame.columnconfigure(1, weight=1)
+        middle_frame.rowconfigure(0, weight=1)
 
-        self.param_send_btn = tk.Button(params_header, text="参数下发", width=10,
-                                        font=("Arial", 10), command=self.send_parameters)
+        # 2.1 左侧：模型参数输入
+        params_container = tk.Frame(middle_frame, bg='white')
+        params_container.grid(row=0, column=0, sticky='nsew', padx=(0, 10))
+
+        # 参数输入标题和按钮
+        params_header = tk.Frame(params_container, bg='white')
+        params_header.pack(fill=tk.X, pady=(0, 5))
+
+        tk.Label(params_header, text="模型参数输入", font=("Arial", 10, "bold"), bg='white').pack(side=tk.LEFT)
+
+        self.param_send_btn = tk.Button(params_header, text="参数下发", width=10, font=("Arial", 10),
+                                        command=self.send_parameters)
         self.param_send_btn.pack(side=tk.RIGHT)
 
         # 参数表格
         self.setup_params_table(params_container)
 
-        # 右侧：变量监视
-        watch_container = tk.Frame(middle_frame)
-        watch_container.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(5, 0))
+        # 2.2 右侧：变量监视
+        watch_container = tk.Frame(middle_frame, bg='white')
+        watch_container.grid(row=0, column=1, sticky='nsew', padx=(10, 0))
 
-        watch_header = tk.Frame(watch_container)
-        watch_header.pack(fill=tk.X, pady=5)
+        watch_header = tk.Frame(watch_container, bg='white')
+        watch_header.pack(fill=tk.X, pady=(0, 5))
 
-        tk.Label(watch_header, text="变量监视", font=("Arial", 12, "bold")).pack(side=tk.LEFT)
+        tk.Label(watch_header, text="变量监视", font=("Arial", 10, "bold"), bg='white').pack(side=tk.LEFT)
 
         # 变量监视表格
         self.setup_watch_table(watch_container)
 
-        # 底部：系统日志
-        bottom_frame = tk.Frame(main_container)
-        bottom_frame.pack(fill=tk.BOTH, expand=True, pady=10)
+        # 3. 底部：系统日志
+        bottom_frame = tk.Frame(main_container, bg='white')
+        bottom_frame.pack(fill=tk.BOTH, expand=True)
 
-        tk.Label(bottom_frame, text="系统日志:", font=("Arial", 12, "bold")).pack(anchor=tk.W)
+        tk.Label(bottom_frame, text="系统日志:", font=("Arial", 10, "bold"), bg='white').pack(anchor='w', pady=(0, 5))
 
-        self.log_text = scrolledtext.ScrolledText(bottom_frame, wrap=tk.WORD,
-                                                  width=80, height=12, font=("Arial", 10))
-        self.log_text.pack(fill=tk.BOTH, expand=True)
+        # 日志文本框
+        log_frame = tk.Frame(bottom_frame, bg='white')
+        log_frame.pack(fill=tk.BOTH, expand=True)
 
-        # 初始日志
-        self.add_log("系统启动成功...")
+        self.log_text = tk.Text(log_frame, wrap=tk.WORD, font=("Arial", 10), height=8)
+        log_scrollbar = ttk.Scrollbar(log_frame, orient=tk.VERTICAL, command=self.log_text.yview)
+        self.log_text.configure(yscrollcommand=log_scrollbar.set)
+
+        self.log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        log_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
     def setup_params_table(self, parent):
-        """设置参数输入表格"""
-        frame = tk.Frame(parent)
-        frame.pack(fill=tk.BOTH, expand=True)
+        """设置参数输入表格（支持双击编辑）"""
+        # 创建表格框架
+        table_frame = tk.Frame(parent, bg='white')
+        table_frame.pack(fill=tk.BOTH, expand=True)
 
         # 创建表格
         columns = ("索引", "输入参数", "参数数值")
-        self.params_table = ttk.Treeview(frame, columns=columns, show="headings", height=8)
+        self.params_table = ttk.Treeview(table_frame, columns=columns, show="headings", height=8)
 
         # 设置列属性
         self.params_table.heading("索引", text="索引")
@@ -140,24 +183,31 @@ class HardwareSimulator:
         self.params_table.heading("参数数值", text="参数数值")
 
         self.params_table.column("索引", width=60, anchor=tk.CENTER)
-        self.params_table.column("输入参数", width=150, anchor=tk.CENTER)
-        self.params_table.column("参数数值", width=150, anchor=tk.CENTER)
+        self.params_table.column("输入参数", width=120, anchor=tk.CENTER)
+        self.params_table.column("参数数值", width=120, anchor=tk.CENTER)
 
         # 添加滚动条
-        scrollbar = ttk.Scrollbar(frame, orient=tk.VERTICAL, command=self.params_table.yview)
+        scrollbar = ttk.Scrollbar(table_frame, orient=tk.VERTICAL, command=self.params_table.yview)
         self.params_table.configure(yscrollcommand=scrollbar.set)
 
         self.params_table.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
+        # 绑定双击编辑事件
+        self.params_table.bind("<Double-1>", self.on_param_double_click)
+
+        # 填充数据
+        self.update_params_table()
+
     def setup_watch_table(self, parent):
-        """设置变量监视表格"""
-        frame = tk.Frame(parent)
-        frame.pack(fill=tk.BOTH, expand=True)
+        """设置变量监视表格（波形列为按钮样式）"""
+        # 创建表格框架
+        table_frame = tk.Frame(parent, bg='white')
+        table_frame.pack(fill=tk.BOTH, expand=True)
 
         # 创建表格
         columns = ("索引", "变量名称", "参数数值", "波形")
-        self.watch_table = ttk.Treeview(frame, columns=columns, show="headings", height=8)
+        self.watch_table = ttk.Treeview(table_frame, columns=columns, show="headings", height=8)
 
         # 设置列属性
         self.watch_table.heading("索引", text="索引")
@@ -166,12 +216,12 @@ class HardwareSimulator:
         self.watch_table.heading("波形", text="波形")
 
         self.watch_table.column("索引", width=60, anchor=tk.CENTER)
-        self.watch_table.column("变量名称", width=120, anchor=tk.CENTER)
-        self.watch_table.column("参数数值", width=120, anchor=tk.CENTER)
-        self.watch_table.column("波形", width=80, anchor=tk.CENTER)
+        self.watch_table.column("变量名称", width=100, anchor=tk.CENTER)
+        self.watch_table.column("参数数值", width=100, anchor=tk.CENTER)
+        self.watch_table.column("波形", width=60, anchor=tk.CENTER)
 
         # 添加滚动条
-        scrollbar = ttk.Scrollbar(frame, orient=tk.VERTICAL, command=self.watch_table.yview)
+        scrollbar = ttk.Scrollbar(table_frame, orient=tk.VERTICAL, command=self.watch_table.yview)
         self.watch_table.configure(yscrollcommand=scrollbar.set)
 
         self.watch_table.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
@@ -180,25 +230,8 @@ class HardwareSimulator:
         # 绑定波形按钮点击事件
         self.watch_table.bind("<Button-1>", self.on_waveform_click)
 
-    def load_initial_data(self):
-        """加载初始数据"""
-        try:
-            # 加载参数数据
-            with open("input_params.json", "r", encoding="utf-8") as f:
-                self.params_data = json.load(f)
-            self.update_params_table()
-        except FileNotFoundError:
-            self.params_data = []
-            self.add_log("警告: input_params.json 文件未找到")
-
-        try:
-            # 加载监视变量数据
-            with open("watch_variables.json", "r", encoding="utf-8") as f:
-                self.watch_data = json.load(f)
-            self.update_watch_table()
-        except FileNotFoundError:
-            self.watch_data = []
-            self.add_log("警告: watch_variables.json 文件未找到")
+        # 填充数据
+        self.update_watch_table()
 
     def update_params_table(self):
         """更新参数表格"""
@@ -206,8 +239,8 @@ class HardwareSimulator:
         for item in self.params_table.get_children():
             self.params_table.delete(item)
 
-        # 添加数据（只显示param和val，隐藏type）
-        for idx, param in enumerate(self.params_data, 1):
+        # 添加数据
+        for idx, param in enumerate(self.input_params, 1):
             self.params_table.insert("", tk.END, values=(
                 idx,
                 param.get("param", ""),
@@ -220,8 +253,8 @@ class HardwareSimulator:
         for item in self.watch_table.get_children():
             self.watch_table.delete(item)
 
-        # 添加数据（只显示variable和val，隐藏type）
-        for idx, var in enumerate(self.watch_data, 1):
+        # 添加数据
+        for idx, var in enumerate(self.watch_variables, 1):
             self.watch_table.insert("", tk.END, values=(
                 idx,
                 var.get("variable", ""),
@@ -229,18 +262,78 @@ class HardwareSimulator:
                 "波形"
             ))
 
+    def on_param_double_click(self, event):
+        """参数数值双击编辑事件"""
+        item = self.params_table.selection()
+        if not item:
+            return
+
+        item = item[0]
+        column = self.params_table.identify_column(event.x)
+
+        # 只允许编辑"参数数值"列（第3列）
+        if column == "#3":
+            # 获取当前值
+            current_values = self.params_table.item(item, "values")
+            current_value = current_values[2]
+
+            # 获取单元格位置
+            bbox = self.params_table.bbox(item, column)
+            if not bbox:
+                return
+
+            # 创建编辑框
+            edit_frame = tk.Frame(self.params_table, borderwidth=1, relief="solid")
+            edit_frame.place(x=bbox[0], y=bbox[1], width=bbox[2], height=bbox[3])
+
+            entry = tk.Entry(edit_frame, font=("Arial", 10))
+            entry.insert(0, current_value)
+            entry.pack(fill=tk.BOTH, expand=True)
+            entry.focus_set()
+            entry.select_range(0, tk.END)
+
+            def save_edit(event=None):
+                new_value = entry.get()
+                # 更新表格数据
+                new_values = (current_values[0], current_values[1], new_value)
+                self.params_table.item(item, values=new_values)
+
+                # 更新内存中的数据
+                idx = int(current_values[0]) - 1
+                if 0 <= idx < len(self.input_params):
+                    self.input_params[idx]["val"] = new_value
+
+                edit_frame.destroy()
+                self.add_log(f"修改参数 {current_values[1]} 的值为: {new_value}")
+
+            def cancel_edit(event=None):
+                edit_frame.destroy()
+
+            entry.bind("<Return>", save_edit)
+            entry.bind("<Escape>", cancel_edit)
+            entry.bind("<FocusOut>", lambda e: save_edit())
+
+    def on_waveform_click(self, event):
+        """波形按钮点击事件"""
+        item = self.watch_table.identify_row(event.y)
+        column = self.watch_table.identify_column(event.x)
+
+        if item and column == "#4":  # 点击的是波形列
+            values = self.watch_table.item(item, "values")
+            variable_name = values[1]  # 变量名称在第二列
+            self.add_log(f"点击了变量 '{variable_name}' 的波形按钮")
+            messagebox.showinfo("波形显示", f"显示变量 {variable_name} 的波形")
+
     def toggle_connection(self):
         """切换连接状态"""
-        current_text = self.connect_button.cget("text")
         target = self.target_entry.get()
-
-        if current_text == "连接":
-            self.connect_button.config(text="断开")
+        if not self.is_connected:
             self.is_connected = True
+            self.connect_button.config(text="断开", bg="lightcoral")
             self.add_log(f"已连接到目标机: {target}")
         else:
-            self.connect_button.config(text="连接")
             self.is_connected = False
+            self.connect_button.config(text="连接", bg="SystemButtonFace")
             self.add_log(f"已断开与目标机 {target} 的连接")
 
     def select_model(self):
@@ -257,28 +350,23 @@ class HardwareSimulator:
 
     def download_model(self):
         """下载模型"""
-        if not self.is_connected:
-            self.add_log("错误: 请先连接目标机")
+        if not self.model_file_label.cget("text") or self.model_file_label.cget("text") == "未选择文件":
+            messagebox.showwarning("警告", "请先选择模型文件")
             return
 
-        self.download_status_label.config(text="模型下载状态: 下载中...")
+        self.download_status_label.config(text="下载中...")
         self.add_log("开始下载模型...")
 
         # 模拟下载过程
         def simulate_download():
             time.sleep(2)
-            self.root.after(0, lambda: self.download_status_label.config(
-                text="模型下载状态: 已完成"))
+            self.root.after(0, lambda: self.download_status_label.config(text="已完成"))
             self.root.after(0, lambda: self.add_log("模型下载完成"))
 
         threading.Thread(target=simulate_download, daemon=True).start()
 
     def send_parameters(self):
         """下发参数"""
-        if not self.is_connected:
-            self.add_log("错误: 请先连接目标机")
-            return
-
         self.add_log("参数下发中...")
 
         # 模拟参数下发过程
@@ -290,15 +378,16 @@ class HardwareSimulator:
 
     def toggle_model_run(self):
         """切换模型运行状态"""
-        if not self.is_connected:
-            self.add_log("错误: 请先连接目标机")
+        if not self.model_file_label.cget("text") or self.model_file_label.cget("text") == "未选择文件":
+            messagebox.showwarning("警告", "请先选择模型文件")
             return
 
-        if not self.model_running:
+        if not self.is_running:
             # 开始运行
-            self.model_running = True
-            self.run_button.config(text="模型停止")
+            self.is_running = True
+            self.run_button.config(text="模型停止", bg="lightcoral")
             self.start_time = time.time()
+            self.stop_timer = False
             self.add_log("模型开始运行")
 
             # 启动计时器线程
@@ -311,14 +400,15 @@ class HardwareSimulator:
 
         else:
             # 停止运行
-            self.model_running = False
-            self.run_button.config(text="模型运行")
+            self.is_running = False
+            self.run_button.config(text="模型运行", bg="SystemButtonFace")
+            self.stop_timer = True
             self.time_label.config(text="00:00:00")
             self.add_log("模型停止运行")
 
     def update_timer(self):
         """更新运行时间"""
-        while self.model_running:
+        while self.is_running and not self.stop_timer:
             elapsed_time = int(time.time() - self.start_time)
             hours = elapsed_time // 3600
             minutes = (elapsed_time % 3600) // 60
@@ -332,11 +422,11 @@ class HardwareSimulator:
         """模拟数据更新"""
         import random
 
-        while self.model_running:
-            if self.watch_data:
+        while self.is_running and not self.stop_timer:
+            if self.watch_variables:
                 # 随机更新一个变量的值
-                idx = random.randint(0, len(self.watch_data) - 1)
-                var_type = self.watch_data[idx].get("type", "int")
+                idx = random.randint(0, len(self.watch_variables) - 1)
+                var_type = self.watch_variables[idx].get("type", "int")
 
                 if var_type == "int":
                     new_val = str(random.randint(0, 100))
@@ -345,20 +435,10 @@ class HardwareSimulator:
                 else:
                     new_val = f"val_{random.randint(100, 999)}"
 
-                self.watch_data[idx]["val"] = new_val
+                self.watch_variables[idx]["val"] = new_val
                 self.root.after(0, self.update_watch_table)
 
             time.sleep(2)
-
-    def on_waveform_click(self, event):
-        """波形按钮点击事件"""
-        item = self.watch_table.identify_row(event.y)
-        column = self.watch_table.identify_column(event.x)
-
-        if item and column == "#4":  # 波形列
-            values = self.watch_table.item(item, "values")
-            variable_name = values[1]  # 变量名称在第二列
-            self.add_log(f"点击了变量 '{variable_name}' 的波形按钮")
 
     def add_log(self, message):
         """添加日志信息"""
@@ -367,7 +447,6 @@ class HardwareSimulator:
 
         self.log_text.insert(tk.END, log_message)
         self.log_text.see(tk.END)
-        self.log_text.update()
 
 
 def create_sample_json_files():
