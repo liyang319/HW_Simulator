@@ -50,11 +50,11 @@ class HardwareSimulator:
         main_container = tk.Frame(self.root, bg='white')
         main_container.pack(fill=tk.BOTH, expand=True, padx=20, pady=5)
 
-        # 1. 顶部控制区域 - 按照图片布局重新设计
-        # 第一行：目标机区域
+        # 1. 目标机区域（第一行）
         target_frame = tk.Frame(main_container, bg='white')
         target_frame.pack(fill=tk.X, pady=(0, 10), anchor='w')
 
+        # 目标机标签和输入框在同一行
         tk.Label(target_frame, text="目标机:", font=("Arial", 10), bg='white').pack(side=tk.LEFT, padx=(0, 5))
 
         self.target_entry = tk.Entry(target_frame, width=20, font=("Arial", 10))
@@ -65,92 +65,93 @@ class HardwareSimulator:
                                         command=self.toggle_connection)
         self.connect_button.pack(side=tk.LEFT)
 
-        # 第二行：模型操作区域
-        model_frame = tk.Frame(main_container, bg='white')
-        model_frame.pack(fill=tk.X, pady=(0, 15), anchor='w')
+        # 2. 模型操作区域（第二行）- 严格按照图片布局
+        model_ops_frame = tk.Frame(main_container, bg='white')
+        model_ops_frame.pack(fill=tk.X, pady=(0, 15), anchor='w')
 
-        # 左侧：模型选择相关
-        left_model_frame = tk.Frame(model_frame, bg='white')
-        left_model_frame.pack(side=tk.LEFT, anchor='w')
+        # 左侧：选择模型按钮 + 模型文件名标签
+        left_ops_frame = tk.Frame(model_ops_frame, bg='white')
+        left_ops_frame.pack(side=tk.LEFT, anchor='w')
 
-        # 选择模型按钮和文件名显示
-        select_model_frame = tk.Frame(left_model_frame, bg='white')
-        select_model_frame.pack(side=tk.LEFT, anchor='w', padx=(0, 20))
-
-        self.select_model_btn = tk.Button(select_model_frame, text="选择模型", width=10, font=("Arial", 10),
+        # 选择模型按钮
+        self.select_model_btn = tk.Button(left_ops_frame, text="选择模型", width=10, font=("Arial", 10),
                                           command=self.select_model)
         self.select_model_btn.pack(side=tk.LEFT, padx=(0, 5))
 
-        # 模型文件名显示（文本标签，不是编辑框）
-        self.model_file_label = tk.Label(select_model_frame, text="未选择文件", font=("Arial", 10),
+        # 模型文件名标签（文本显示）
+        tk.Label(left_ops_frame, text="模型文件名", font=("Arial", 10), bg='white').pack(side=tk.LEFT, padx=(0, 5))
+        self.model_file_label = tk.Label(left_ops_frame, text="未选择文件", font=("Arial", 10),
                                          width=15, relief=tk.SUNKEN, bg="white", anchor='w')
-        self.model_file_label.pack(side=tk.LEFT)
+        self.model_file_label.pack(side=tk.LEFT, padx=(0, 20))
 
-        # 模型下载按钮和状态显示
-        download_frame = tk.Frame(left_model_frame, bg='white')
-        download_frame.pack(side=tk.LEFT, anchor='w', padx=(0, 20))
+        # 中间：模型下载按钮 + 模型下载状态标签
+        middle_ops_frame = tk.Frame(model_ops_frame, bg='white')
+        middle_ops_frame.pack(side=tk.LEFT, anchor='w')
 
-        self.download_model_btn = tk.Button(download_frame, text="模型下载", width=10, font=("Arial", 10),
+        self.download_model_btn = tk.Button(middle_ops_frame, text="模型下载", width=10, font=("Arial", 10),
                                             command=self.download_model)
         self.download_model_btn.pack(side=tk.LEFT, padx=(0, 5))
 
-        # 模型下载状态显示（文本标签）
-        self.download_status_label = tk.Label(download_frame, text="未下载", font=("Arial", 10),
+        tk.Label(middle_ops_frame, text="模型下载状态", font=("Arial", 10), bg='white').pack(side=tk.LEFT, padx=(0, 5))
+        self.download_status_label = tk.Label(middle_ops_frame, text="未下载", font=("Arial", 10),
                                               width=12, relief=tk.SUNKEN, bg="white", anchor='w')
-        self.download_status_label.pack(side=tk.LEFT)
+        self.download_status_label.pack(side=tk.LEFT, padx=(0, 20))
 
-        # 右侧：模型运行和时间显示
-        right_model_frame = tk.Frame(model_frame, bg='white')
-        right_model_frame.pack(side=tk.RIGHT, anchor='e')
+        # 右侧：模型运行按钮 + 运行时间标签
+        right_ops_frame = tk.Frame(model_ops_frame, bg='white')
+        right_ops_frame.pack(side=tk.LEFT, anchor='w')
 
-        self.run_button = tk.Button(right_model_frame, text="模型运行", width=10, font=("Arial", 10),
+        self.run_button = tk.Button(right_ops_frame, text="模型运行", width=10, font=("Arial", 10),
                                     command=self.toggle_model_run)
         self.run_button.pack(side=tk.LEFT, padx=(0, 5))
 
-        # 运行时间显示（文本标签）
-        self.time_label = tk.Label(right_model_frame, text="00:00:00", font=("Arial", 10),
+        # 运行时间标签（文本显示）
+        self.time_label = tk.Label(right_ops_frame, text="00:00:00", font=("Arial", 10),
                                    width=12, relief=tk.SUNKEN, bg="white", anchor='center')
         self.time_label.pack(side=tk.LEFT)
 
-        # 2. 中间区域：参数表格和监视表格 - 确保对齐
+        # 3. 中间区域：参数表格和监视表格
         middle_frame = tk.Frame(main_container, bg='white')
         middle_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 15))
 
-        # 配置网格权重确保两个表格对齐
-        middle_frame.columnconfigure(0, weight=1)
-        middle_frame.columnconfigure(1, weight=1)
-        middle_frame.rowconfigure(0, weight=1)
+        # 表格标题行 - 在同一行，高度一致
+        table_titles_frame = tk.Frame(middle_frame, bg='white', height=30)
+        table_titles_frame.pack(fill=tk.X, pady=(0, 5))
 
-        # 2.1 左侧：模型参数输入
-        params_container = tk.Frame(middle_frame, bg='white')
-        params_container.grid(row=0, column=0, sticky='nsew', padx=(0, 10))
+        # 左侧：模型参数输入标题 + 参数下发按钮
+        left_title_frame = tk.Frame(table_titles_frame, bg='white')
+        left_title_frame.pack(side=tk.LEFT, anchor='w')
 
-        # 参数输入标题和按钮
-        params_header = tk.Frame(params_container, bg='white')
-        params_header.pack(fill=tk.X, pady=(0, 5))
+        tk.Label(left_title_frame, text="模型参数输入", font=("Arial", 10, "bold"), bg='white').pack(side=tk.LEFT,
+                                                                                                     padx=(0, 10))
 
-        tk.Label(params_header, text="模型参数输入", font=("Arial", 10, "bold"), bg='white').pack(side=tk.LEFT)
-
-        self.param_send_btn = tk.Button(params_header, text="参数下发", width=10, font=("Arial", 10),
+        self.param_send_btn = tk.Button(left_title_frame, text="参数下发", width=10, font=("Arial", 10),
                                         command=self.send_parameters)
-        self.param_send_btn.pack(side=tk.RIGHT)
+        self.param_send_btn.pack(side=tk.LEFT)
 
-        # 参数表格
-        self.setup_params_table(params_container)
+        # 右侧：变量监视标题
+        right_title_frame = tk.Frame(table_titles_frame, bg='white')
+        right_title_frame.pack(side=tk.RIGHT, anchor='e')
 
-        # 2.2 右侧：变量监视
-        watch_container = tk.Frame(middle_frame, bg='white')
-        watch_container.grid(row=0, column=1, sticky='nsew', padx=(10, 0))
+        tk.Label(right_title_frame, text="变量监视", font=("Arial", 10, "bold"), bg='white').pack(side=tk.LEFT)
 
-        watch_header = tk.Frame(watch_container, bg='white')
-        watch_header.pack(fill=tk.X, pady=(0, 5))
+        # 表格容器 - 使用Frame确保严格对齐
+        tables_container = tk.Frame(middle_frame, bg='white')
+        tables_container.pack(fill=tk.BOTH, expand=True)
 
-        tk.Label(watch_header, text="变量监视", font=("Arial", 10, "bold"), bg='white').pack(side=tk.LEFT)
+        # 左侧参数表格
+        params_frame = tk.Frame(tables_container, bg='white')
+        params_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
 
-        # 变量监视表格
-        self.setup_watch_table(watch_container)
+        self.setup_params_table(params_frame)
 
-        # 3. 底部：系统日志
+        # 右侧监视表格
+        watch_frame = tk.Frame(tables_container, bg='white')
+        watch_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(5, 0))
+
+        self.setup_watch_table(watch_frame)
+
+        # 4. 底部：系统日志
         bottom_frame = tk.Frame(main_container, bg='white')
         bottom_frame.pack(fill=tk.BOTH, expand=True)
 
@@ -177,14 +178,25 @@ class HardwareSimulator:
         columns = ("索引", "输入参数", "参数数值")
         self.params_table = ttk.Treeview(table_frame, columns=columns, show="headings", height=8)
 
-        # 设置列属性
+        # 设置列属性 - 索引列宽度缩小
         self.params_table.heading("索引", text="索引")
         self.params_table.heading("输入参数", text="输入参数")
         self.params_table.heading("参数数值", text="参数数值")
 
-        self.params_table.column("索引", width=60, anchor=tk.CENTER)
+        self.params_table.column("索引", width=40, anchor=tk.CENTER)  # 缩小索引列宽度
         self.params_table.column("输入参数", width=120, anchor=tk.CENTER)
         self.params_table.column("参数数值", width=120, anchor=tk.CENTER)
+
+        # 设置表格样式，增加分隔线
+        style = ttk.Style()
+        style.configure("Treeview",
+                        rowheight=25,
+                        font=('Arial', 10),
+                        borderwidth=1,
+                        relief='solid')
+        style.configure("Treeview.Heading",
+                        font=('Arial', 10, 'bold'),
+                        background='lightgray')
 
         # 添加滚动条
         scrollbar = ttk.Scrollbar(table_frame, orient=tk.VERTICAL, command=self.params_table.yview)
@@ -209,16 +221,24 @@ class HardwareSimulator:
         columns = ("索引", "变量名称", "参数数值", "波形")
         self.watch_table = ttk.Treeview(table_frame, columns=columns, show="headings", height=8)
 
-        # 设置列属性
+        # 设置列属性 - 索引列宽度缩小
         self.watch_table.heading("索引", text="索引")
         self.watch_table.heading("变量名称", text="变量名称")
         self.watch_table.heading("参数数值", text="参数数值")
         self.watch_table.heading("波形", text="波形")
 
-        self.watch_table.column("索引", width=60, anchor=tk.CENTER)
+        self.watch_table.column("索引", width=40, anchor=tk.CENTER)  # 缩小索引列宽度
         self.watch_table.column("变量名称", width=100, anchor=tk.CENTER)
         self.watch_table.column("参数数值", width=100, anchor=tk.CENTER)
         self.watch_table.column("波形", width=60, anchor=tk.CENTER)
+
+        # 设置表格样式，增加分隔线
+        style = ttk.Style()
+        style.configure("Treeview",
+                        rowheight=25,
+                        font=('Arial', 10),
+                        borderwidth=1,
+                        relief='solid')
 
         # 添加滚动条
         scrollbar = ttk.Scrollbar(table_frame, orient=tk.VERTICAL, command=self.watch_table.yview)
