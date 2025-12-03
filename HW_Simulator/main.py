@@ -117,12 +117,16 @@ class HardwareSimulator:
 
         tk.Label(target_frame, text="目标机:", font=("Arial", 10), bg='#d9d9d9').pack(side=tk.LEFT, padx=(0, 5))
 
-        self.target_entry = tk.Entry(target_frame, width=20, font=("Arial", 10))
+        self.target_entry = tk.Entry(target_frame, width=20, font=("Arial", 10), bg='white',
+                                     highlightthickness=0, bd=3, relief='flat',
+                                     highlightbackground='#d9d9d9', highlightcolor='#d9d9d9')
         self.target_entry.pack(side=tk.LEFT, padx=(0, 10))
         self.target_entry.insert(0, "192.168.1.100")
 
         self.connect_button = tk.Button(target_frame, text="连接", width=8, font=("Arial", 10),
-                                        command=self.toggle_connection)
+                                        command=self.toggle_connection, bg='#d9d9d9',
+                                        highlightthickness=0, bd=0, relief='flat',
+                                        highlightbackground='#d9d9d9', highlightcolor='#d9d9d9')
         self.connect_button.pack(side=tk.LEFT)
 
         # 模型操作区域（第二行）
@@ -131,7 +135,9 @@ class HardwareSimulator:
 
         # 选择模型按钮和文件名显示
         self.select_model_btn = tk.Button(model_ops_frame, text="选择模型", width=10, font=("Arial", 10),
-                                          command=self.select_model)
+                                          command=self.select_model, bg='#d9d9d9',
+                                          highlightthickness=0, bd=0, relief='flat',
+                                          highlightbackground='#d9d9d9', highlightcolor='#d9d9d9')
         self.select_model_btn.pack(side=tk.LEFT, padx=(0, 10))
 
         # 模型文件名显示
@@ -141,7 +147,9 @@ class HardwareSimulator:
 
         # 模型下载按钮和状态显示
         self.download_model_btn = tk.Button(model_ops_frame, text="模型下载", width=10, font=("Arial", 10),
-                                            command=self.download_model)
+                                            command=self.download_model, bg='#d9d9d9',
+                                            highlightthickness=0, bd=0, relief='flat',
+                                            highlightbackground='#d9d9d9', highlightcolor='#d9d9d9')
         self.download_model_btn.pack(side=tk.LEFT, padx=(0, 10))
 
         # 模型下载状态显示
@@ -151,7 +159,9 @@ class HardwareSimulator:
 
         # 模型运行按钮和时间显示
         self.run_button = tk.Button(model_ops_frame, text="模型运行", width=10, font=("Arial", 10),
-                                    command=self.toggle_model_run)
+                                    command=self.toggle_model_run, bg='#d9d9d9',
+                                    highlightthickness=0, bd=0, relief='flat',
+                                    highlightbackground='#d9d9d9', highlightcolor='#d9d9d9')
         self.run_button.pack(side=tk.LEFT, padx=(0, 10))
 
         # 运行时间显示
@@ -176,7 +186,9 @@ class HardwareSimulator:
                                                                                                      padx=(0, 10))
 
         self.param_send_btn = tk.Button(left_title_frame, text="参数下发", width=10, font=("Arial", 10),
-                                        command=self.send_parameters)
+                                        command=self.send_parameters, bg='#d9d9d9',
+                                        highlightthickness=0, bd=0, relief='flat',
+                                        highlightbackground='#d9d9d9', highlightcolor='#d9d9d9')
         self.param_send_btn.pack(side=tk.LEFT)
 
         # 右侧：变量监视标题
