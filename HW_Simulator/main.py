@@ -108,11 +108,16 @@ class HardwareSimulator:
         main_container = tk.Frame(self.root, bg='white')
         main_container.pack(fill=tk.BOTH, expand=True, padx=20, pady=5)
 
-        # 1. 目标机区域（第一行）
-        target_frame = tk.Frame(main_container, bg='white')
-        target_frame.pack(fill=tk.X, pady=(0, 10), anchor='w')
+        # 1. 基础设置区域
+        basic_settings_frame = tk.LabelFrame(main_container, text="基础设置", font=("Arial", 11, "bold"),
+                                           bg='#f0f0f0', fg='#333333', bd=2, relief=tk.GROOVE)
+        basic_settings_frame.pack(fill=tk.X, pady=(0, 15))
 
-        tk.Label(target_frame, text="目标机:", font=("Arial", 10), bg='white').pack(side=tk.LEFT, padx=(0, 5))
+        # 目标机区域（第一行）
+        target_frame = tk.Frame(basic_settings_frame, bg='#f0f0f0')
+        target_frame.pack(fill=tk.X, pady=(10, 5), anchor='w', padx=10)
+
+        tk.Label(target_frame, text="目标机:", font=("Arial", 10), bg='#f0f0f0').pack(side=tk.LEFT, padx=(0, 5))
 
         self.target_entry = tk.Entry(target_frame, width=20, font=("Arial", 10))
         self.target_entry.pack(side=tk.LEFT, padx=(0, 10))
@@ -122,9 +127,9 @@ class HardwareSimulator:
                                         command=self.toggle_connection)
         self.connect_button.pack(side=tk.LEFT)
 
-        # 2. 模型操作区域（第二行）
-        model_ops_frame = tk.Frame(main_container, bg='white')
-        model_ops_frame.pack(fill=tk.X, pady=(0, 15), anchor='w')
+        # 模型操作区域（第二行）
+        model_ops_frame = tk.Frame(basic_settings_frame, bg='#f0f0f0')
+        model_ops_frame.pack(fill=tk.X, pady=(5, 10), anchor='w', padx=10)
 
         # 选择模型按钮和文件名显示
         self.select_model_btn = tk.Button(model_ops_frame, text="选择模型", width=10, font=("Arial", 10),
@@ -133,7 +138,7 @@ class HardwareSimulator:
 
         # 模型文件名显示
         self.model_file_label = tk.Label(model_ops_frame, text="未选择文件", font=("Arial", 10),
-                                         bg='white', width=15, anchor='w')
+                                         bg='#f0f0f0', width=15, anchor='w')
         self.model_file_label.pack(side=tk.LEFT, padx=(0, 20))
 
         # 模型下载按钮和状态显示
@@ -143,7 +148,7 @@ class HardwareSimulator:
 
         # 模型下载状态显示
         self.download_status_label = tk.Label(model_ops_frame, text="未下载", font=("Arial", 10),
-                                              bg='white', width=12, anchor='w')
+                                              bg='#f0f0f0', width=12, anchor='w')
         self.download_status_label.pack(side=tk.LEFT, padx=(0, 20))
 
         # 模型运行按钮和时间显示
@@ -153,22 +158,23 @@ class HardwareSimulator:
 
         # 运行时间显示
         self.time_label = tk.Label(model_ops_frame, text="00:00:00", font=("Arial", 10),
-                                   bg='white', width=10, anchor='center')
+                                   bg='#f0f0f0', width=10, anchor='center')
         self.time_label.pack(side=tk.LEFT)
 
-        # 3. 中间区域：参数表格和监视表格
-        middle_frame = tk.Frame(main_container, bg='white')
-        middle_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 15))
+        # 2. 参数变量区域
+        params_vars_frame = tk.LabelFrame(main_container, text="参数变量", font=("Arial", 11, "bold"),
+                                        bg='#f0f8ff', fg='#333333', bd=2, relief=tk.GROOVE)
+        params_vars_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 15))
 
         # 表格标题行
-        table_titles_frame = tk.Frame(middle_frame, bg='white')
-        table_titles_frame.pack(fill=tk.X, pady=(0, 5))
+        table_titles_frame = tk.Frame(params_vars_frame, bg='#f0f8ff')
+        table_titles_frame.pack(fill=tk.X, pady=(10, 5), padx=10)
 
         # 左侧：模型参数输入标题 + 参数下发按钮
-        left_title_frame = tk.Frame(table_titles_frame, bg='white')
+        left_title_frame = tk.Frame(table_titles_frame, bg='#f0f8ff')
         left_title_frame.pack(side=tk.LEFT, anchor='w')
 
-        tk.Label(left_title_frame, text="模型参数输入", font=("Arial", 10, "bold"), bg='white').pack(side=tk.LEFT,
+        tk.Label(left_title_frame, text="模型参数输入", font=("Arial", 10, "bold"), bg='#f0f8ff').pack(side=tk.LEFT,
                                                                                                      padx=(0, 10))
 
         self.param_send_btn = tk.Button(left_title_frame, text="参数下发", width=10, font=("Arial", 10),
@@ -176,28 +182,28 @@ class HardwareSimulator:
         self.param_send_btn.pack(side=tk.LEFT)
 
         # 右侧：变量监视标题
-        right_title_frame = tk.Frame(table_titles_frame, bg='white')
+        right_title_frame = tk.Frame(table_titles_frame, bg='#f0f8ff')
         right_title_frame.pack(side=tk.RIGHT, anchor='w')
 
-        tk.Label(right_title_frame, text="变量监视", font=("Arial", 10, "bold"), bg='white').pack(side=tk.LEFT)
+        tk.Label(right_title_frame, text="变量监视", font=("Arial", 10, "bold"), bg='#f0f8ff').pack(side=tk.LEFT)
 
         # 表格容器
-        tables_container = tk.Frame(middle_frame, bg='white')
-        tables_container.pack(fill=tk.BOTH, expand=True)
+        tables_container = tk.Frame(params_vars_frame, bg='#f0f8ff')
+        tables_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
 
         # 左侧参数表格
-        params_frame = tk.Frame(tables_container, bg='white')
+        params_frame = tk.Frame(tables_container, bg='#f0f8ff')
         params_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
 
         self.setup_params_table(params_frame)
 
         # 右侧监视表格
-        watch_frame = tk.Frame(tables_container, bg='white')
+        watch_frame = tk.Frame(tables_container, bg='#f0f8ff')
         watch_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(5, 0))
 
         self.setup_watch_table(watch_frame)
 
-        # 4. 底部：系统日志
+        # 3. 底部：系统日志
         bottom_frame = tk.Frame(main_container, bg='white')
         bottom_frame.pack(fill=tk.BOTH, expand=True)
 
@@ -438,7 +444,7 @@ class HardwareSimulator:
             value_label.pack(side=tk.LEFT, fill=tk.BOTH)
 
             # 波形按钮列 - 使用表头相同的宽度，增加行高度
-            wave_button = tk.Label(row_frame, text="⁓", font=('Arial', 10),
+            wave_button = tk.Label(row_frame, text="＿/￣", font=('Arial', 10),
                                    bg='lightblue', width=self.watch_header_widths[3],
                                    height=2, relief='raised', bd=1, anchor=tk.CENTER, cursor="hand2")
             wave_button.pack(side=tk.LEFT, fill=tk.BOTH)
