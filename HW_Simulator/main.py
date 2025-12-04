@@ -5,6 +5,7 @@ import time
 import threading
 from datetime import datetime
 from TCPClient import TCPClient
+from SimulatorMessageHandler import CtrlMessageHandler, StatusMessageHandler
 
 
 class HardwareSimulator:
@@ -30,9 +31,9 @@ class HardwareSimulator:
         self.stop_timer = False
         self.is_connected = False
 
-        # 创建TCPClient对象 - 新增代码
-        self.status_tcpclient = None  # 数据链路TCP客户端（端口9000）
-        self.ctrl_tcpclient = None  # 控制链路TCP客户端（端口9001）
+        # 消息处理器
+        self.ctrl_handler = None
+        self.status_handler = None
 
         # 创建示例JSON文件（如果不存在）
         self.create_sample_json_files()
@@ -113,7 +114,7 @@ class HardwareSimulator:
 
         # 1. 基础设置区域
         basic_settings_frame = tk.LabelFrame(main_container, text="基础设置", font=("Arial", 11, "bold"),
-                                           bg='#d9d9d9', fg='#333333', bd=2, relief=tk.GROOVE)
+                                             bg='#d9d9d9', fg='#333333', bd=2, relief=tk.GROOVE)
         basic_settings_frame.pack(fill=tk.X, pady=(0, 15))
 
         # 目标机区域（第一行）
@@ -176,7 +177,7 @@ class HardwareSimulator:
 
         # 2. 参数变量区域
         params_vars_frame = tk.LabelFrame(main_container, text="参数变量", font=("Arial", 11, "bold"),
-                                        bg='#d9d9d9', fg='#333333', bd=2, relief=tk.GROOVE)
+                                          bg='#d9d9d9', fg='#333333', bd=2, relief=tk.GROOVE)
         params_vars_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 15))
 
         # 表格标题行
@@ -188,7 +189,7 @@ class HardwareSimulator:
         left_title_frame.pack(side=tk.LEFT, anchor='w')
 
         tk.Label(left_title_frame, text="模型参数输入", font=("Arial", 10, "bold"), bg='#d9d9d9').pack(side=tk.LEFT,
-                                                                                                     padx=(0, 10))
+                                                                                                       padx=(0, 10))
 
         self.param_send_btn = tk.Button(left_title_frame, text="参数下发", width=10, font=("Arial", 10),
                                         command=self.send_parameters, bg='#d9d9d9',
@@ -221,11 +222,11 @@ class HardwareSimulator:
         # 3. 底部：系统日志区域
         system_log_frame = tk.LabelFrame(main_container, text="系统日志", font=("Arial", 11, "bold"),
                                          bg='#d9d9d9', fg='#333333', bd=2, relief=tk.GROOVE)
-        system_log_frame.pack(fill=tk.BOTH, expand=True, pady=(10, 0))  # 增加上边距
+        system_log_frame.pack(fill=tk.BOTH, expand=True, pady=(10, 0))
 
-        # 日志文本框容器（直接放在LabelFrame中，去掉标题行）
+        # 日志文本框容器
         log_container = tk.Frame(system_log_frame, bg='#d9d9d9')
-        log_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)  # 增加内边距
+        log_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
         # 日志文本框
         log_frame = tk.Frame(log_container, bg='#d9d9d9')
@@ -250,7 +251,6 @@ class HardwareSimulator:
 
         # 表头标签 - 使用固定宽度
         headers = ["索引", "输入参数", "参数数值"]
-        # 设置字符宽度 - 增加列宽确保对齐
         widths = [10, 48, 48]  # 字符宽度
 
         header_labels = []
@@ -315,8 +315,7 @@ class HardwareSimulator:
 
         # 表头标签 - 使用固定宽度
         headers = ["索引", "变量名称", "参数数值", "波形"]
-        # 调整列宽：增加变量名称和参数数值列宽，缩小波形列宽
-        widths = [10, 50, 50, 7]  # 字符宽度 - 调整后的宽度
+        widths = [10, 50, 50, 7]  # 字符宽度
 
         header_labels = []
         for i, (header, width) in enumerate(zip(headers, widths)):
@@ -376,31 +375,28 @@ class HardwareSimulator:
 
         self.param_rows = []
 
-        print(f"正在更新参数表格，数据条数: {len(self.input_params)}")
-
-        # 添加数据行 - 使用与表头相同的宽度
+        # 添加数据行
         for idx, param in enumerate(self.input_params, 1):
             param_name = param.get("param", f"参数{idx}")
             param_value = param.get("val", "")
-            print(f"添加参数: {idx}, {param_name}, {param_value}")
 
-            # 创建一行 - 增加行高度
+            # 创建一行
             row_frame = tk.Frame(self.params_content_frame, bg='white')
             row_frame.pack(fill=tk.X)
 
-            # 索引列 - 使用表头相同的宽度，增加行高度
+            # 索引列
             index_label = tk.Label(row_frame, text=str(idx), font=('Arial', 10),
                                    bg='white', width=self.param_header_widths[0],
                                    height=2, relief='solid', bd=1, anchor=tk.CENTER)
             index_label.pack(side=tk.LEFT, fill=tk.BOTH)
 
-            # 参数名列 - 使用表头相同的宽度，增加行高度
+            # 参数名列
             name_label = tk.Label(row_frame, text=param_name, font=('Arial', 10),
                                   bg='white', width=self.param_header_widths[1],
                                   height=2, relief='solid', bd=1, anchor=tk.CENTER)
             name_label.pack(side=tk.LEFT, fill=tk.BOTH)
 
-            # 参数值列 - 使用表头相同的宽度，增加行高度，最后一列填充剩余空间
+            # 参数值列
             value_label = tk.Label(row_frame, text=param_value, font=('Arial', 10),
                                    bg='white', width=self.param_header_widths[2],
                                    height=2, relief='solid', bd=1, anchor=tk.CENTER, cursor="hand2")
@@ -431,37 +427,34 @@ class HardwareSimulator:
 
         self.watch_rows = []
 
-        print(f"正在更新监视表格，数据条数: {len(self.watch_variables)}")
-
-        # 添加数据行 - 使用与表头相同的宽度
+        # 添加数据行
         for idx, var in enumerate(self.watch_variables, 1):
             var_name = var.get("variable", f"变量{idx}")
             var_value = var.get("val", "")
-            print(f"添加变量: {idx}, {var_name}, {var_value}")
 
-            # 创建一行 - 增加行高度
+            # 创建一行
             row_frame = tk.Frame(self.watch_content_frame, bg='white')
             row_frame.pack(fill=tk.X)
 
-            # 索引列 - 使用表头相同的宽度，增加行高度
+            # 索引列
             index_label = tk.Label(row_frame, text=str(idx), font=('Arial', 10),
                                    bg='white', width=self.watch_header_widths[0],
                                    height=2, relief='solid', bd=1, anchor=tk.CENTER)
             index_label.pack(side=tk.LEFT, fill=tk.BOTH)
 
-            # 变量名列 - 使用表头相同的宽度，增加行高度
+            # 变量名列
             name_label = tk.Label(row_frame, text=var_name, font=('Arial', 10),
                                   bg='white', width=self.watch_header_widths[1],
                                   height=2, relief='solid', bd=1, anchor=tk.CENTER)
             name_label.pack(side=tk.LEFT, fill=tk.BOTH)
 
-            # 变量值列 - 使用表头相同的宽度，增加行高度
+            # 变量值列
             value_label = tk.Label(row_frame, text=var_value, font=('Arial', 10),
                                    bg='white', width=self.watch_header_widths[2],
                                    height=2, relief='solid', bd=1, anchor=tk.CENTER)
             value_label.pack(side=tk.LEFT, fill=tk.BOTH)
 
-            # 波形按钮列 - 使用表头相同的宽度，增加行高度
+            # 波形按钮列
             wave_button = tk.Label(row_frame, text="＿/￣", font=('Arial', 8),
                                    bg='lightblue', width=self.watch_header_widths[3],
                                    height=2, relief='raised', bd=1, anchor=tk.CENTER, cursor="hand2")
@@ -530,14 +523,28 @@ class HardwareSimulator:
             self.connect_button.config(text="连接中...", state="disabled")
 
             def connect_thread():
-                # 创建TCPClient对象
-                self.status_tcpclient = TCPClient(target, 9000, timeout=5.0)
-                self.ctrl_tcpclient = TCPClient(target, 9001, timeout=5.0)
-                # 同时连接两个客户端
-                status_connected = self.status_tcpclient.connect()
-                ctrl_connected = self.ctrl_tcpclient.connect()
-                # 更新UI
-                self.root.after(0, self._update_connection_status, target, status_connected, ctrl_connected)
+                try:
+                    # 创建消息处理器，使用新的回调设计
+                    self.ctrl_handler = CtrlMessageHandler(
+                        target, 9001,
+                        message_callback=self.on_system_message
+                    )
+                    self.status_handler = StatusMessageHandler(
+                        target, 9000,
+                        variable_callback=self.on_variable_data
+                    )
+
+                    # 启动处理器
+                    ctrl_success = self.ctrl_handler.start()
+                    status_success = self.status_handler.start()
+
+                    # 更新UI
+                    self.root.after(0, self._update_connection_status, target, ctrl_success, status_success)
+
+                except Exception as e:
+                    self.root.after(0, lambda: self.add_log(f"连接过程中发生错误: {e}"))
+                    self.root.after(0, lambda: self.connect_button.config(text="连接", state="normal"))
+
             threading.Thread(target=connect_thread, daemon=True).start()
         else:
             # 断开连接操作
@@ -546,42 +553,153 @@ class HardwareSimulator:
             self.connect_button.config(text="连接", bg="SystemButtonFace")
             self.add_log(f"已断开与目标机 {target} 的连接")
 
-    def _update_connection_status(self, target, status_connected, ctrl_connected):
+    def on_system_message(self, message_info):
+        """
+        处理系统控制消息（来自控制链路）
+        Args:
+            message_info: 包含系统消息信息的字典
+        """
+        # 在UI线程中处理系统消息
+        self.root.after(0, lambda: self._handle_system_message_ui(message_info))
+
+    def on_variable_data(self, variable_info):
+        """
+        处理变量数据（来自状态链路）
+        Args:
+            variable_info: 包含变量数据的字典
+        """
+        # 在UI线程中更新变量显示
+        self.root.after(0, lambda: self._handle_variable_data_ui(variable_info))
+
+    def _handle_system_message_ui(self, message_info):
+        """在UI线程中处理系统消息"""
+        try:
+            msg_type = message_info.get('type', 'unknown')
+            message = message_info.get('message', '')
+            timestamp = message_info.get('timestamp', '')
+            source = message_info.get('source', 'unknown')
+
+            # 根据消息类型进行不同处理
+            if msg_type == 'system_message':
+                log_message = f"[{timestamp}] 系统消息({source}): {message}"
+                self.add_log(log_message)
+
+                # 特殊系统消息处理
+                if "HEARTBEAT" in message:
+                    self._handle_heartbeat_message()
+                elif "CONNECTED" in message:
+                    self._handle_connected_message()
+                elif "ERROR" in message:
+                    self._handle_error_message(message)
+
+            elif msg_type == 'error':
+                log_message = f"[{timestamp}] 错误({source}): {message}"
+                self.add_log(log_message)
+
+        except Exception as e:
+            self.add_log(f"处理系统消息UI错误: {e}")
+
+    def _handle_variable_data_ui(self, variable_info):
+        """在UI线程中更新变量显示"""
+        try:
+            if variable_info.get('type') != 'variable_data':
+                return
+
+            variable_data = variable_info.get('data', {})
+            if not isinstance(variable_data, dict):
+                return
+
+            updated = False
+            for var_name, var_value in variable_data.items():
+                # 在监视变量列表中查找匹配的变量
+                for i, var in enumerate(self.watch_variables):
+                    if var.get('variable') == var_name:
+                        # 更新变量值
+                        old_value = var.get('val', '')
+                        var['val'] = str(var_value)
+
+                        # 记录变化（可选）
+                        if old_value != str(var_value):
+                            timestamp = variable_info.get('timestamp', '')
+                            self.add_log(f"[{timestamp}] 变量更新: {var_name} = {var_value}")
+
+                        updated = True
+                        break
+
+            # 如果有变量被更新，刷新表格显示
+            if updated:
+                self.update_watch_table()
+
+        except Exception as e:
+            self.add_log(f"更新变量显示错误: {e}")
+
+    def _handle_heartbeat_message(self):
+        """处理心跳消息"""
+        # 可以在这里更新连接状态指示器等
+        pass
+
+    def _handle_connected_message(self):
+        """处理连接成功消息"""
+        # 更新连接状态UI
+        pass
+
+    def _handle_error_message(self, message):
+        """处理错误消息"""
+        # 显示错误提示等
+        pass
+
+    def _update_connection_status(self, target, ctrl_success, status_success):
         """更新连接状态"""
-        if status_connected and ctrl_connected:
+        if ctrl_success and status_success:
             self.is_connected = True
             self.connect_button.config(text="断开", bg="lightcoral", state="normal")
-            self.add_log(f"数据链路(9000)连接成功 - 目标机: {target}")
             self.add_log(f"控制链路(9001)连接成功 - 目标机: {target}")
+            self.add_log(f"状态链路(9000)连接成功 - 目标机: {target}")
             self.add_log(f"已连接到目标机: {target}")
+
+            # 连接成功后可以发送测试消息
+            self._send_test_messages()
         else:
             self.is_connected = False
             self.connect_button.config(text="连接", bg="SystemButtonFace", state="normal")
 
-            if not status_connected and not ctrl_connected:
-                self.add_log(f"连接失败: 数据链路(9000)和控制链路(9001)都无法连接到目标机 {target}")
-            elif not status_connected:
-                self.add_log(f"连接失败: 数据链路(9000)无法连接到目标机 {target}")
-                self.add_log(f"控制链路(9001)连接成功 - 目标机: {target}")
-                if self.ctrl_tcpclient:
-                    self.ctrl_tcpclient.disconnect()
-            else:
-                self.add_log(f"数据链路(9000)连接成功 - 目标机: {target}")
+            if not ctrl_success and not status_success:
+                self.add_log(f"连接失败: 控制链路(9001)和状态链路(9000)都无法连接到目标机 {target}")
+            elif not ctrl_success:
                 self.add_log(f"连接失败: 控制链路(9001)无法连接到目标机 {target}")
-                if self.status_tcpclient:
-                    self.status_tcpclient.disconnect()
+                if self.status_handler:
+                    self.status_handler.stop()
+            else:
+                self.add_log(f"控制链路(9001)连接成功 - 目标机: {target}")
+                self.add_log(f"连接失败: 状态链路(9000)无法连接到目标机 {target}")
+                if self.ctrl_handler:
+                    self.ctrl_handler.stop()
 
-            self.status_tcpclient = None
-            self.ctrl_tcpclient = None
+            self.ctrl_handler = None
+            self.status_handler = None
 
     def _disconnect_connections(self):
         """断开所有连接"""
-        if self.status_tcpclient:
-            self.status_tcpclient.disconnect()
-            self.status_tcpclient = None
-        if self.ctrl_tcpclient:
-            self.ctrl_tcpclient.disconnect()
-            self.ctrl_tcpclient = None
+        if self.ctrl_handler:
+            self.ctrl_handler.stop()
+            self.ctrl_handler = None
+        if self.status_handler:
+            self.status_handler.stop()
+            self.status_handler = None
+
+    def _send_test_messages(self):
+        """发送测试消息"""
+        if self.ctrl_handler and self.ctrl_handler.is_connected():
+            # 发送控制消息示例
+            test_message = "CLIENT_READY"
+            self.ctrl_handler.send_message(test_message)
+            self.add_log(f"发送控制消息: {test_message}")
+
+        if self.status_handler and self.status_handler.is_connected():
+            # 发送状态消息示例
+            status_message = "STATUS_REQUEST"
+            self.status_handler.send_message(status_message)
+            self.add_log(f"发送状态请求: {status_message}")
 
     def select_model(self):
         """选择模型文件"""
@@ -613,13 +731,22 @@ class HardwareSimulator:
 
     def send_parameters(self):
         """下发参数"""
+        if not self.is_connected or not self.ctrl_handler:
+            messagebox.showwarning("警告", "请先连接到目标机")
+            return
+
         self.add_log("参数下发中...")
 
-        def simulate_send():
-            time.sleep(1)
-            self.root.after(0, lambda: self.add_log("参数下发完成"))
+        # 构建参数消息
+        param_message = "PARAM_SET:"
+        for param in self.input_params:
+            param_message += f"{param['param']}={param['val']};"
 
-        threading.Thread(target=simulate_send, daemon=True).start()
+        # 通过控制链路发送参数
+        if self.ctrl_handler.send_message(param_message):
+            self.add_log("参数消息已发送")
+        else:
+            self.add_log("参数发送失败")
 
     def toggle_model_run(self):
         """切换模型运行状态"""
