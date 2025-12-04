@@ -31,7 +31,7 @@ class HardwareSimulator:
         self.is_connected = False
 
         # 创建TCPClient对象 - 新增代码
-        self.data_tcpclient = None  # 数据链路TCP客户端（端口9000）
+        self.status_tcpclient = None  # 数据链路TCP客户端（端口9000）
         self.ctrl_tcpclient = None  # 控制链路TCP客户端（端口9001）
 
         # 创建示例JSON文件（如果不存在）
@@ -531,13 +531,13 @@ class HardwareSimulator:
 
             def connect_thread():
                 # 创建TCPClient对象
-                self.data_tcpclient = TCPClient(target, 9000, timeout=5.0)
+                self.status_tcpclient = TCPClient(target, 9000, timeout=5.0)
                 self.ctrl_tcpclient = TCPClient(target, 9001, timeout=5.0)
                 # 同时连接两个客户端
-                data_connected = self.data_tcpclient.connect()
+                status_connected = self.status_tcpclient.connect()
                 ctrl_connected = self.ctrl_tcpclient.connect()
                 # 更新UI
-                self.root.after(0, self._update_connection_status, target, data_connected, ctrl_connected)
+                self.root.after(0, self._update_connection_status, target, status_connected, ctrl_connected)
             threading.Thread(target=connect_thread, daemon=True).start()
         else:
             # 断开连接操作
@@ -546,9 +546,9 @@ class HardwareSimulator:
             self.connect_button.config(text="连接", bg="SystemButtonFace")
             self.add_log(f"已断开与目标机 {target} 的连接")
 
-    def _update_connection_status(self, target, data_connected, ctrl_connected):
+    def _update_connection_status(self, target, status_connected, ctrl_connected):
         """更新连接状态"""
-        if data_connected and ctrl_connected:
+        if status_connected and ctrl_connected:
             self.is_connected = True
             self.connect_button.config(text="断开", bg="lightcoral", state="normal")
             self.add_log(f"数据链路(9000)连接成功 - 目标机: {target}")
@@ -558,9 +558,9 @@ class HardwareSimulator:
             self.is_connected = False
             self.connect_button.config(text="连接", bg="SystemButtonFace", state="normal")
 
-            if not data_connected and not ctrl_connected:
+            if not status_connected and not ctrl_connected:
                 self.add_log(f"连接失败: 数据链路(9000)和控制链路(9001)都无法连接到目标机 {target}")
-            elif not data_connected:
+            elif not status_connected:
                 self.add_log(f"连接失败: 数据链路(9000)无法连接到目标机 {target}")
                 self.add_log(f"控制链路(9001)连接成功 - 目标机: {target}")
                 if self.ctrl_tcpclient:
@@ -568,17 +568,17 @@ class HardwareSimulator:
             else:
                 self.add_log(f"数据链路(9000)连接成功 - 目标机: {target}")
                 self.add_log(f"连接失败: 控制链路(9001)无法连接到目标机 {target}")
-                if self.data_tcpclient:
-                    self.data_tcpclient.disconnect()
+                if self.status_tcpclient:
+                    self.status_tcpclient.disconnect()
 
-            self.data_tcpclient = None
+            self.status_tcpclient = None
             self.ctrl_tcpclient = None
 
     def _disconnect_connections(self):
         """断开所有连接"""
-        if self.data_tcpclient:
-            self.data_tcpclient.disconnect()
-            self.data_tcpclient = None
+        if self.status_tcpclient:
+            self.status_tcpclient.disconnect()
+            self.status_tcpclient = None
         if self.ctrl_tcpclient:
             self.ctrl_tcpclient.disconnect()
             self.ctrl_tcpclient = None
