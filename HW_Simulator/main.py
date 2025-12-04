@@ -126,7 +126,7 @@ class HardwareSimulator:
                                      highlightthickness=0, bd=3, relief='flat',
                                      highlightbackground='#d9d9d9', highlightcolor='#d9d9d9')
         self.target_entry.pack(side=tk.LEFT, padx=(0, 10))
-        self.target_entry.insert(0, "192.168.1.100")
+        self.target_entry.insert(0, "192.168.3.83")
 
         self.connect_button = tk.Button(target_frame, text="连接", width=8, font=("Arial", 10),
                                         command=self.toggle_connection, bg='#d9d9d9',
@@ -218,18 +218,21 @@ class HardwareSimulator:
 
         self.setup_watch_table(watch_frame)
 
-        # 3. 底部：系统日志
-        bottom_frame = tk.Frame(main_container, bg='#d9d9d9')
-        bottom_frame.pack(fill=tk.BOTH, expand=True)
+        # 3. 底部：系统日志区域
+        system_log_frame = tk.LabelFrame(main_container, text="系统日志", font=("Arial", 11, "bold"),
+                                         bg='#d9d9d9', fg='#333333', bd=2, relief=tk.GROOVE)
+        system_log_frame.pack(fill=tk.BOTH, expand=True, pady=(10, 0))  # 增加上边距
 
-        tk.Label(bottom_frame, text="系统日志:", font=("Arial", 10, "bold"), bg='#d9d9d9').pack(anchor='w', pady=(0, 5))
+        # 日志文本框容器（直接放在LabelFrame中，去掉标题行）
+        log_container = tk.Frame(system_log_frame, bg='#d9d9d9')
+        log_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)  # 增加内边距
 
         # 日志文本框
-        log_frame = tk.Frame(bottom_frame, bg='#d9d9d9')
+        log_frame = tk.Frame(log_container, bg='#d9d9d9')
         log_frame.pack(fill=tk.BOTH, expand=True)
 
-        self.log_text = tk.Text(log_frame, wrap=tk.WORD, font=("Arial", 10), height=8)
-        log_scrollbar = ttk.Scrollbar(log_frame, orient=tk.VERTICAL, command=self.log_text.yview)
+        self.log_text = tk.Text(log_frame, wrap=tk.WORD, font=("Arial", 10), height=8, bg='white')
+        log_scrollbar = tk.Scrollbar(log_frame, orient=tk.VERTICAL, command=self.log_text.yview, width=3)
         self.log_text.configure(yscrollcommand=log_scrollbar.set)
 
         self.log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
