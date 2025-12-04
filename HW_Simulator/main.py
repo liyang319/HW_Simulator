@@ -4,6 +4,7 @@ import json
 import time
 import threading
 from datetime import datetime
+from TCPClient import TCPClient
 
 
 class HardwareSimulator:
@@ -28,6 +29,10 @@ class HardwareSimulator:
         self.timer_thread = None
         self.stop_timer = False
         self.is_connected = False
+
+        # 创建TCPClient对象 - 新增代码
+        self.data_tcpclient = None  # 数据链路TCP客户端（端口9000）
+        self.cmd_tcpclient = None  # 控制链路TCP客户端（端口9001）
 
         # 创建示例JSON文件（如果不存在）
         self.create_sample_json_files()
@@ -518,13 +523,62 @@ class HardwareSimulator:
         """切换连接状态"""
         target = self.target_entry.get()
         if not self.is_connected:
-            self.is_connected = True
-            self.connect_button.config(text="断开", bg="lightcoral")
-            self.add_log(f"已连接到目标机: {target}")
+            # 连接操作
+            self.connect_button.config(text="连接中...", state="disabled")
+
+            def connect_thread():
+                # 创建TCPClient对象
+                self.data_tcpclient = TCPClient(target, 9000, timeout=5.0)
+                self.cmd_tcpclient = TCPClient(target, 9001, timeout=5.0)
+                # 同时连接两个客户端
+                data_connected = self.data_tcpclient.connect()
+                cmd_connected = self.cmd_tcpclient.connect()
+                # 更新UI
+                self.root.after(0, self._update_connection_status, target, data_connected, cmd_connected)
+            threading.Thread(target=connect_thread, daemon=True).start()
         else:
+            # 断开连接操作
+            self._disconnect_connections()
             self.is_connected = False
             self.connect_button.config(text="连接", bg="SystemButtonFace")
             self.add_log(f"已断开与目标机 {target} 的连接")
+
+    def _update_connection_status(self, target, data_connected, cmd_connected):
+        """更新连接状态"""
+        if data_connected and cmd_connected:
+            self.is_connected = True
+            self.connect_button.config(text="断开", bg="lightcoral", state="normal")
+            self.add_log(f"数据链路(9000)连接成功 - 目标机: {target}")
+            self.add_log(f"控制链路(9001)连接成功 - 目标机: {target}")
+            self.add_log(f"已连接到目标机: {target}")
+        else:
+            self.is_connected = False
+            self.connect_button.config(text="连接", bg="SystemButtonFace", state="normal")
+
+            if not data_connected and not cmd_connected:
+                self.add_log(f"连接失败: 数据链路(9000)和控制链路(9001)都无法连接到目标机 {target}")
+            elif not data_connected:
+                self.add_log(f"连接失败: 数据链路(9000)无法连接到目标机 {target}")
+                self.add_log(f"控制链路(9001)连接成功 - 目标机: {target}")
+                if self.cmd_tcpclient:
+                    self.cmd_tcpclient.disconnect()
+            else:
+                self.add_log(f"数据链路(9000)连接成功 - 目标机: {target}")
+                self.add_log(f"连接失败: 控制链路(9001)无法连接到目标机 {target}")
+                if self.data_tcpclient:
+                    self.data_tcpclient.disconnect()
+
+            self.data_tcpclient = None
+            self.cmd_tcpclient = None
+
+    def _disconnect_connections(self):
+        """断开所有连接"""
+        if self.data_tcpclient:
+            self.data_tcpclient.disconnect()
+            self.data_tcpclient = None
+        if self.cmd_tcpclient:
+            self.cmd_tcpclient.disconnect()
+            self.cmd_tcpclient = None
 
     def select_model(self):
         """选择模型文件"""
