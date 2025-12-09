@@ -604,11 +604,12 @@ class HardwareSimulator:
 
     def _handle_variable_data_ui(self, variable_info):
         """在UI线程中处理变量数据"""
+        print('_handle_variable_data_ui')
         try:
             if variable_info.get('type') != 'variable_data':
                 return
 
-            message = variable_info.get('message', '')
+            message = variable_info.get('data', '')
             if not message:
                 return
 
@@ -638,7 +639,8 @@ class HardwareSimulator:
         """
         try:
             # 尝试解析JSON
-            data = json.loads(message)
+            # data = json.loads(message)
+            data = message
 
             # 检查是否为查询变量响应
             if data.get('cmd') == 'QueryVars_ack':
