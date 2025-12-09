@@ -143,13 +143,13 @@ class TCPMessageHandler:
                 except queue.Empty:
                     pass
 
-                # 2. 接收数据（使用短超时）
-                data = self.tcp_client.receive(timeout=0.01)  # 10ms超时
+                # 2. 接收数据（不阻塞）
+                data = self.tcp_client.receive(timeout=0.0)  # 不阻塞
                 if data is not None:
                     self.recv_queue.put(data)
                     self.logger.debug(f"{self.name} 接收到数据，已加入接收队列")
 
-                # 3. 如果没有处理发送或接收，短暂休眠
+                # 3. 如果没有活动，短暂休眠
                 if not send_processed and data is None:
                     time.sleep(0.001)  # 1ms休眠
 
