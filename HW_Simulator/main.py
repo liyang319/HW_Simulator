@@ -604,25 +604,13 @@ class HardwareSimulator:
 
     def _handle_variable_data_ui(self, variable_info):
         """在UI线程中处理变量数据"""
-        print('_handle_variable_data_ui')
         try:
-            if variable_info.get('type') != 'variable_data':
-                return
-
-            message = variable_info.get('data', '')
-            if not message:
-                return
-
-            # 尝试解析消息
-            data = self._parse_query_var_message(message)
-            if data:
-                # 更新变量显示
-                self._update_variables_from_data(data)
+            self._update_variables_from_data(variable_info)
 
         except Exception as e:
             self.add_log(f"处理变量数据UI错误: {e}")
 
-    def _parse_query_var_message(self, message):
+    def _parse_query_var_message(self, variable_info):
         """
         解析查询变量响应消息
         期望的JSON格式:

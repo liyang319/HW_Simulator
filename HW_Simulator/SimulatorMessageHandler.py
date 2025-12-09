@@ -112,16 +112,9 @@ class StatusMessageHandler(TCPMessageHandler):
             # 解析变量数据
             variable_data = self._parse_variable_data(message)
             if variable_data:
-                self.logger.info(f"成功解析变量数据: {len(variable_data)}个变量")
-
                 # 通过回调函数传递变量数据
                 if self.variable_callback:
-                    self.variable_callback({
-                        'type': 'variable_data',
-                        'data': variable_data,
-                        'timestamp': self._get_timestamp(),
-                        'source': 'status_link'
-                    })
+                    self.variable_callback(variable_data)
             else:
                 # 如果不是变量数据，记录到日志
                 self.logger.warning(f"无法解析为变量数据: {message[:50]}...")
