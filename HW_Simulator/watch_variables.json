@@ -1,32 +1,17 @@
 [
   {
-    "variable": "温度",
+    "variable": "var1",
     "type": "float",
     "val": "25.5"
   },
   {
-    "variable": "压力",
+    "variable": "var2",
     "type": "float",
     "val": "101.3"
   },
   {
-    "variable": "转速",
-    "type": "int",
+    "variable": "var3",
+    "type": "float",
     "val": "1500"
-  },
-  {
-    "variable": "状态",
-    "type": "string",
-    "val": "正常"
-  },
-  {
-    "variable": "电流",
-    "type": "float",
-    "val": "12.5"
-  },
-  {
-    "variable": "电压",
-    "type": "float",
-    "val": "220.0"
   }
 ]

@@ -58,12 +58,12 @@ class HardwareSimulator:
         except (FileNotFoundError, json.JSONDecodeError):
             # 创建输入参数示例文件
             input_params = [
-                {"param": "采样频率", "type": "int", "val": "1000"},
-                {"param": "仿真时长", "type": "float", "val": "10.5"},
-                {"param": "模型名称", "type": "string", "val": "test_model"},
-                {"param": "参数A", "type": "int", "val": "50"},
-                {"param": "参数B", "type": "float", "val": "3.14"},
-                {"param": "参数C", "type": "string", "val": "default"}
+                {"param": "param1", "type": "float", "val": "1000"},
+                {"param": "param2", "type": "float", "val": "10.5"},
+                {"param": "param3", "type": "float", "val": "100"},
+                {"param": "param4", "type": "float", "val": "50"},
+                {"param": "param5", "type": "float", "val": "3.14"},
+                {"param": "param6", "type": "float", "val": "0.1"}
             ]
 
             with open("input_params.json", "w", encoding="utf-8") as f:
@@ -76,12 +76,9 @@ class HardwareSimulator:
         except (FileNotFoundError, json.JSONDecodeError):
             # 创建监视变量示例文件
             watch_variables = [
-                {"variable": "温度", "type": "float", "val": "25.5"},
-                {"variable": "压力", "type": "float", "val": "101.3"},
-                {"variable": "转速", "type": "int", "val": "1500"},
-                {"variable": "状态", "type": "string", "val": "正常"},
-                {"variable": "电流", "type": "float", "val": "12.5"},
-                {"variable": "电压", "type": "float", "val": "220.0"}
+                {"variable": "var1", "type": "float", "val": "25.5"},
+                {"variable": "var2", "type": "float", "val": "101.3"},
+                {"variable": "var3", "type": "float", "val": "1500"}
             ]
 
             with open("watch_variables.json", "w", encoding="utf-8") as f:
@@ -127,7 +124,7 @@ class HardwareSimulator:
                                      highlightthickness=0, bd=3, relief='flat',
                                      highlightbackground='#d9d9d9', highlightcolor='#d9d9d9')
         self.target_entry.pack(side=tk.LEFT, padx=(0, 10))
-        self.target_entry.insert(0, "192.168.3.83")
+        self.target_entry.insert(0, "192.168.3.173")
 
         self.connect_button = tk.Button(target_frame, text="连接", width=8, font=("Arial", 10),
                                         command=self.toggle_connection, bg='#d9d9d9',
@@ -657,8 +654,6 @@ class HardwareSimulator:
             self.add_log(f"状态链路(9000)连接成功 - 目标机: {target}")
             self.add_log(f"已连接到目标机: {target}")
 
-            # 连接成功后可以发送测试消息
-            self._send_test_messages()
         else:
             self.is_connected = False
             self.connect_button.config(text="连接", bg="SystemButtonFace", state="normal")
@@ -700,6 +695,18 @@ class HardwareSimulator:
             status_message = "STATUS_REQUEST"
             self.status_handler.send_message(status_message)
             self.add_log(f"发送状态请求: {status_message}")
+
+    def _send_query_var_message(self):
+        if self.status_handler and self.status_handler.is_connected():
+            # 发送状态消息示例
+            query_data = {
+                "cmd": "QueryVars",
+                "count": 3
+            }
+            json_str = json.dumps(query_data)
+            self.status_handler.send_message(json_str)
+            self.add_log(f"发送状态请求: {json_str}")
+
 
     def select_model(self):
         """选择模型文件"""
