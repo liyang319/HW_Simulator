@@ -130,28 +130,31 @@ class TCPMessageHandler:
 
         while self.running and self.tcp_client and self.tcp_client.is_connected:
             try:
-                # 检查发送队列并发送数据
+                # 1. 检查发送队列并发送数据
+                send_processed = False
                 try:
                     if not self.send_queue.empty():
                         message = self.send_queue.get_nowait()
                         if self.tcp_client.send(message):
-                            self.logger.info(f"{self.name} 发送消息成功")
+                            self.logger.debug(f"{self.name} 发送消息成功")
                         else:
                             self.logger.error(f"{self.name} 发送消息失败")
+                        send_processed = True
                 except queue.Empty:
                     pass
 
-                # 接收数据
-                data = self.tcp_client.receive()
+                # 2. 接收数据（使用短超时）
+                data = self.tcp_client.receive(timeout=0.01)  # 10ms超时
                 if data is not None:
                     self.recv_queue.put(data)
-                    self.logger.info(f"{self.name} 接收到数据，已加入接收队列")
+                    self.logger.debug(f"{self.name} 接收到数据，已加入接收队列")
 
-                # 短暂休眠避免CPU占用过高
-                time.sleep(0.01)
+                # 3. 如果没有处理发送或接收，短暂休眠
+                if not send_processed and data is None:
+                    time.sleep(0.001)  # 1ms休眠
 
             except Exception as e:
-                self.logger.error(f"{self.name} 处理线程异常: {e}")
+                # self.logger.error(f"{self.name} 处理线程异常: {e}")
                 if self.running:
                     time.sleep(0.1)
 

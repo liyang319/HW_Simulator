@@ -750,8 +750,7 @@ class HardwareSimulator:
             # 构建查询消息
             query_data = {
                 "cmd": "QueryVars",
-                "count": len(self.watch_variables),
-                "index": self.query_index
+                "count": len(self.watch_variables)
             }
             json_str = json.dumps(query_data)
 
