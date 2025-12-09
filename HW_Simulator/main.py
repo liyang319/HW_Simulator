@@ -22,6 +22,7 @@ class HardwareSimulator:
 
         # 设置整体背景色为灰色
         self.root.configure(bg='#d9d9d9')
+        self.query_index = 1
 
         # 状态变量
         self.model_file = None
@@ -34,6 +35,11 @@ class HardwareSimulator:
         # 消息处理器
         self.ctrl_handler = None
         self.status_handler = None
+
+        # 查询定时器控制变量
+        self.query_timer = None
+        self.is_querying = False
+        self.query_interval = 1.0  # 查询间隔1秒
 
         # 创建示例JSON文件（如果不存在）
         self.create_sample_json_files()
@@ -597,38 +603,90 @@ class HardwareSimulator:
             self.add_log(f"处理系统消息UI错误: {e}")
 
     def _handle_variable_data_ui(self, variable_info):
-        """在UI线程中更新变量显示"""
+        """在UI线程中处理变量数据"""
         try:
             if variable_info.get('type') != 'variable_data':
                 return
 
-            variable_data = variable_info.get('data', {})
-            if not isinstance(variable_data, dict):
+            message = variable_info.get('message', '')
+            if not message:
+                return
+
+            # 尝试解析消息
+            data = self._parse_query_var_message(message)
+            if data:
+                # 更新变量显示
+                self._update_variables_from_data(data)
+
+        except Exception as e:
+            self.add_log(f"处理变量数据UI错误: {e}")
+
+    def _parse_query_var_message(self, message):
+        """
+        解析查询变量响应消息
+        期望的JSON格式:
+        {
+            "cmd": "QueryVars_ack",
+            "count": 3,
+            "vars": {
+                "var1": "123.33",
+                "var2": "11.22",
+                "var3": "333.50"
+            },
+            "ack": "OK"
+        }
+        """
+        try:
+            # 尝试解析JSON
+            data = json.loads(message)
+
+            # 检查是否为查询变量响应
+            if data.get('cmd') == 'QueryVars_ack':
+                ack = data.get('ack', '')
+                if ack == 'OK':
+                    return data
+                else:
+                    self.add_log(f"查询变量响应失败: {ack}")
+            else:
+                # 如果不是QueryVars_ack，记录日志但不处理
+                self.add_log(f"收到非查询变量响应: {data.get('cmd')}")
+
+        except json.JSONDecodeError as e:
+            self.add_log(f"解析JSON失败: {e}, 消息: {message[:100]}...")
+        except Exception as e:
+            self.add_log(f"解析查询变量消息失败: {e}")
+
+        return None
+
+    def _update_variables_from_data(self, data):
+        """从解析的数据更新变量"""
+        try:
+            vars_dict = data.get('vars', {})
+            if not vars_dict:
                 return
 
             updated = False
-            for var_name, var_value in variable_data.items():
+            for var_name, var_value in vars_dict.items():
                 # 在监视变量列表中查找匹配的变量
-                for i, var in enumerate(self.watch_variables):
+                for var in self.watch_variables:
                     if var.get('variable') == var_name:
                         # 更新变量值
                         old_value = var.get('val', '')
                         var['val'] = str(var_value)
 
-                        # 记录变化（可选）
+                        # 记录变化
                         if old_value != str(var_value):
-                            timestamp = variable_info.get('timestamp', '')
-                            self.add_log(f"[{timestamp}] 变量更新: {var_name} = {var_value}")
-
-                        updated = True
+                            self.add_log(f"变量更新: {var_name} = {var_value}")
+                            updated = True
                         break
 
             # 如果有变量被更新，刷新表格显示
             if updated:
                 self.update_watch_table()
+                self.add_log(f"已更新{len(vars_dict)}个变量")
 
         except Exception as e:
-            self.add_log(f"更新变量显示错误: {e}")
+            self.add_log(f"更新变量失败: {e}")
 
     def _handle_heartbeat_message(self):
         """处理心跳消息"""
@@ -675,6 +733,9 @@ class HardwareSimulator:
 
     def _disconnect_connections(self):
         """断开所有连接"""
+        # 停止查询定时器
+        self._stop_var_query_timer()
+
         if self.ctrl_handler:
             self.ctrl_handler.stop()
             self.ctrl_handler = None
@@ -682,37 +743,62 @@ class HardwareSimulator:
             self.status_handler.stop()
             self.status_handler = None
 
-    def _send_test_messages(self):
-        """发送测试消息"""
-        if self.ctrl_handler and self.ctrl_handler.is_connected():
-            # 发送控制消息示例
-            test_message = "CLIENT_READY"
-            self.ctrl_handler.send_message(test_message)
-            self.add_log(f"发送控制消息: {test_message}")
-
-        if self.status_handler and self.status_handler.is_connected():
-            # 发送状态消息示例
-            status_message = "STATUS_REQUEST"
-            self.status_handler.send_message(status_message)
-            self.add_log(f"发送状态请求: {status_message}")
-
     def _send_query_var_message(self):
+        """发送查询变量消息"""
+        print('_send_query_var_message');
         if self.status_handler and self.status_handler.is_connected():
-            # 发送状态消息示例
+            # 构建查询消息
             query_data = {
                 "cmd": "QueryVars",
-                "count": 3
+                "count": len(self.watch_variables),
+                "index": self.query_index
             }
             json_str = json.dumps(query_data)
-            self.status_handler.send_message(json_str)
-            self.add_log(f"发送状态请求: {json_str}")
 
+            if self.status_handler.send_message(json_str):
+                self.add_log(f"发送变量查询: {json_str}")
+            else:
+                self.add_log("变量查询发送失败")
+            self.query_index += 1
+
+    def _start_var_query_timer(self):
+        """启动变量查询定时器"""
+        print('_start_var_query_timer')
+        if self.is_querying and self.status_handler and self.status_handler.is_connected():
+            # 立即发送第一次查询
+            self._send_query_var_message()
+
+            # 设置定时器，每秒查询一次
+            self.query_timer = threading.Timer(self.query_interval, self._query_var_periodically)
+            self.query_timer.daemon = True
+            self.query_timer.start()
+
+    def _stop_var_query_timer(self):
+        """停止变量查询定时器"""
+        if self.query_timer:
+            self.query_timer.cancel()
+            self.query_timer = None
+
+    def _query_var_periodically(self):
+        """定时查询变量"""
+        if self.is_querying and self.is_connected:
+            try:
+                # 发送查询消息
+                self._send_query_var_message()
+            except Exception as e:
+                self.add_log(f"查询变量失败: {e}")
+
+            # 重新设置定时器
+            if self.is_querying:
+                self.query_timer = threading.Timer(self.query_interval, self._query_var_periodically)
+                self.query_timer.daemon = True
+                self.query_timer.start()
 
     def select_model(self):
         """选择模型文件"""
         file_path = filedialog.askopenfilename(
             title="选择模型文件",
-            filetypes=[("模型文件", "*.mdl *.model *.bin"), ("所有文件", "*.*")]
+            filetypes=[("所有文件", "*.*")]
         )
 
         if file_path:
@@ -764,25 +850,34 @@ class HardwareSimulator:
         if not self.is_running:
             # 开始运行
             self.is_running = True
+            self.is_querying = True
             self.run_button.config(text="模型停止", bg="lightcoral")
             self.start_time = time.time()
             self.stop_timer = False
             self.add_log("模型开始运行")
+
+            # 启动变量查询定时器
+            self._start_var_query_timer()
 
             # 启动计时器线程
             self.timer_thread = threading.Thread(target=self.update_timer, daemon=True)
             self.timer_thread.start()
 
             # 启动模拟数据更新线程
-            self.data_update_thread = threading.Thread(target=self.simulate_data_update, daemon=True)
-            self.data_update_thread.start()
+            # self.data_update_thread = threading.Thread(target=self.simulate_data_update, daemon=True)
+            # self.data_update_thread.start()
 
         else:
             # 停止运行
             self.is_running = False
+            self.is_querying = False
             self.run_button.config(text="模型运行", bg="SystemButtonFace")
             self.stop_timer = True
             self.time_label.config(text="00:00:00")
+
+            # 停止查询定时器
+            self._stop_var_query_timer()
+
             self.add_log("模型停止运行")
 
     def update_timer(self):
@@ -798,24 +893,26 @@ class HardwareSimulator:
             time.sleep(1)
 
     def simulate_data_update(self):
-        """模拟数据更新"""
+        """模拟数据更新 - 如果收到真实数据，可以注释掉这部分"""
         import random
 
         while self.is_running and not self.stop_timer:
-            if self.watch_variables:
-                # 随机更新一个变量的值
-                idx = random.randint(0, len(self.watch_variables) - 1)
-                var_type = self.watch_variables[idx].get("type", "int")
+            # 这里可以保留模拟数据更新，或者注释掉以便接收真实数据
+            if not self.is_connected:  # 只有在没有连接时使用模拟数据
+                if self.watch_variables:
+                    # 随机更新一个变量的值
+                    idx = random.randint(0, len(self.watch_variables) - 1)
+                    var_type = self.watch_variables[idx].get("type", "int")
 
-                if var_type == "int":
-                    new_val = str(random.randint(0, 100))
-                elif var_type == "float":
-                    new_val = f"{random.uniform(0, 100):.2f}"
-                else:
-                    new_val = f"val_{random.randint(100, 999)}"
+                    if var_type == "int":
+                        new_val = str(random.randint(0, 100))
+                    elif var_type == "float":
+                        new_val = f"{random.uniform(0, 100):.2f}"
+                    else:
+                        new_val = f"val_{random.randint(100, 999)}"
 
-                self.watch_variables[idx]["val"] = new_val
-                self.root.after(0, self.update_watch_table)
+                    self.watch_variables[idx]["val"] = new_val
+                    self.root.after(0, self.update_watch_table)
 
             time.sleep(2)
 
