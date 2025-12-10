@@ -6,6 +6,7 @@ import threading
 from datetime import datetime
 from TCPClient import TCPClient
 from SimulatorMessageHandler import CtrlMessageHandler, StatusMessageHandler
+from WaveformWindow import WaveformWindow
 
 
 class HardwareSimulator:
@@ -40,6 +41,9 @@ class HardwareSimulator:
         self.query_timer = None
         self.is_querying = False
         self.query_interval = 1.0  # 查询间隔1秒
+
+        # 波形窗口管理
+        self.waveform_windows = {}  # 存储打开的波形窗口
 
         # 创建示例JSON文件（如果不存在）
         self.create_sample_json_files()
@@ -516,7 +520,53 @@ class HardwareSimulator:
     def on_waveform_click_new(self, variable_name):
         """波形按钮点击事件"""
         self.add_log(f"点击了变量 '{variable_name}' 的波形按钮")
-        messagebox.showinfo("波形显示", f"显示变量 {variable_name} 的波形")
+        # messagebox.showinfo("波形显示", f"显示变量 {variable_name} 的波形")
+        # 检查是否已经打开了该变量的波形窗口
+        if variable_name in self.waveform_windows:
+            window = self.waveform_windows[variable_name]
+            if window.is_open():
+                # 窗口已存在，将其提到前台
+                window.window.lift()
+                window.window.focus_force()
+                return
+
+        # 创建新的波形窗口
+        try:
+            wave_window = WaveformWindow(self.root, variable_name, max_points=200)
+            self.waveform_windows[variable_name] = wave_window
+
+            # 绑定窗口关闭事件
+            wave_window.window.protocol("WM_DELETE_WINDOW",
+                                        lambda v=variable_name: self._on_waveform_window_close(v))
+
+        except Exception as e:
+            self.add_log(f"创建波形窗口失败: {e}")
+            messagebox.showerror("错误", f"无法创建波形窗口: {e}")
+
+    def _on_waveform_window_close(self, variable_name):
+        """波形窗口关闭时的处理"""
+        if variable_name in self.waveform_windows:
+            try:
+                # 销毁窗口
+                window = self.waveform_windows[variable_name]
+                if window.is_open():
+                    window.destroy()
+            except:
+                pass
+            finally:
+                # 从字典中移除
+                del self.waveform_windows[variable_name]
+
+    def _update_waveform_data(self, variable_name, value, timestamp):
+        """更新波形窗口数据"""
+        try:
+            if variable_name in self.waveform_windows:
+                window = self.waveform_windows[variable_name]
+                if window.is_open():
+                    window.add_data_point(value, timestamp)
+        except Exception as e:
+            # 静默处理错误，避免影响主程序
+            pass
 
     def toggle_connection(self):
         """切换连接状态"""
@@ -606,6 +656,17 @@ class HardwareSimulator:
         """在UI线程中处理变量数据"""
         try:
             self._update_variables_from_data(variable_info)
+            # 检查是否需要更新波形窗口
+            vars_dict = variable_info.get('vars', {})
+            if vars_dict:
+                timestamp = time.time()
+                for var_name, var_value in vars_dict.items():
+                    if var_name in self.waveform_windows:
+                        window = self.waveform_windows[var_name]
+                        if window.is_open():
+                            # 在UI线程中更新波形
+                            self.root.after(0, lambda vn=var_name, vv=var_value, ts=timestamp:
+                            self._update_waveform_data(vn, vv, ts))
 
         except Exception as e:
             self.add_log(f"处理变量数据UI错误: {e}")
@@ -711,6 +772,10 @@ class HardwareSimulator:
         """断开所有连接"""
         # 停止查询定时器
         self._stop_var_query_timer()
+
+        # 关闭所有波形窗口
+        for variable_name in list(self.waveform_windows.keys()):
+            self._on_waveform_window_close(variable_name)
 
         if self.ctrl_handler:
             self.ctrl_handler.stop()
