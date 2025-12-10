@@ -610,21 +610,7 @@ class HardwareSimulator:
         except Exception as e:
             self.add_log(f"处理变量数据UI错误: {e}")
 
-    def _parse_query_var_message(self, variable_info):
-        """
-        解析查询变量响应消息
-        期望的JSON格式:
-        {
-            "cmd": "QueryVars_ack",
-            "count": 3,
-            "vars": {
-                "var1": "123.33",
-                "var2": "11.22",
-                "var3": "333.50"
-            },
-            "ack": "OK"
-        }
-        """
+    def _parse_query_var_message(self, message):
         try:
             # 尝试解析JSON
             # data = json.loads(message)
