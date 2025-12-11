@@ -1,9 +1,81 @@
 import tkinter as tk
 import time
+import os
+import sys
 from collections import deque
+import matplotlib
+
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
+import matplotlib.font_manager as fm
+
+
+def get_system_chinese_font():
+    """获取系统可用的中文字体"""
+    # 常见的中文字体路径
+    font_paths = []
+
+    if sys.platform == 'win32':  # Windows
+        windir = os.environ.get('WINDIR', 'C:\\Windows')
+        font_paths = [
+            os.path.join(windir, 'Fonts', 'msyh.ttc'),  # 微软雅黑
+            os.path.join(windir, 'Fonts', 'simhei.ttf'),  # 黑体
+            os.path.join(windir, 'Fonts', 'simsun.ttc'),  # 宋体
+            os.path.join(windir, 'Fonts', 'simkai.ttf'),  # 楷体
+        ]
+    elif sys.platform == 'darwin':  # macOS
+        font_paths = [
+            '/System/Library/Fonts/PingFang.ttc',
+            '/System/Library/Fonts/STHeiti Light.ttc',
+            '/System/Library/Fonts/STHeiti Medium.ttc',
+            '/Library/Fonts/Arial Unicode.ttf',
+        ]
+    else:  # Linux
+        font_paths = [
+            '/usr/share/fonts/truetype/wqy/wqy-microhei.ttc',  # 文泉驿微米黑
+            '/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc',  # 文泉驿正黑
+            '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc',
+            '/usr/share/fonts/truetype/arphic/uming.ttc',  # AR PL UMing
+        ]
+
+    # 查找存在的字体文件
+    for font_path in font_paths:
+        if os.path.exists(font_path):
+            return font_path
+
+    return None
+
+
+def setup_matplotlib_chinese_font():
+    """配置matplotlib使用中文字体"""
+    try:
+        # 查找中文字体
+        chinese_font_path = get_system_chinese_font()
+
+        if chinese_font_path:
+            # 添加字体
+            fm.fontManager.addfont(chinese_font_path)
+            font_name = fm.FontProperties(fname=chinese_font_path).get_name()
+
+            # 配置matplotlib
+            plt.rcParams['font.sans-serif'] = [font_name]
+            plt.rcParams['axes.unicode_minus'] = False
+
+            print(f"已设置matplotlib中文字体: {font_name}")
+            return True
+        else:
+            print("警告: 未找到系统中文字体，中文字符可能显示为方块")
+            return False
+
+    except Exception as e:
+        print(f"设置中文字体时出错: {e}")
+        return False
+
+
+# 初始化中文字体
+setup_matplotlib_chinese_font()
 
 
 class WaveformWindow:
@@ -178,3 +250,4 @@ class WaveformWindow:
             self.window.destroy()
         except:
             pass
+
