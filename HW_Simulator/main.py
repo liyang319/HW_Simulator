@@ -1136,6 +1136,7 @@ class HardwareSimulator:
             # 心跳超时，连接断开
             self.add_log("心跳超时，连接已断开")
             self.root.after(0, lambda: self._update_connection_status_display(False, force_disconnect=True))
+            self.root.after(0, lambda: self.connect_button.config(text="连接", state="normal"))
         else:
             # 连接正常，继续检查
             self._start_status_check_timer()
