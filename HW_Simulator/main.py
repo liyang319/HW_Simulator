@@ -33,6 +33,14 @@ class HardwareSimulator:
         self.stop_timer = False
         self.is_connected = False
 
+        # 心跳控制
+        self.use_heartbeat = True  # 是否使用心跳机制
+        self.last_heartbeat_time = None  # 最后收到心跳的时间
+        self.heartbeat_timer = None  # 心跳定时器
+        self.heartbeat_interval = 5  # 心跳发送间隔（秒）
+        self.heartbeat_timeout = 20  # 心跳超时时间（秒）
+        self.status_check_timer = None  # 状态检查定时器
+
         # 消息处理器
         self.ctrl_handler = None
         self.status_handler = None
@@ -141,6 +149,21 @@ class HardwareSimulator:
                                         highlightthickness=0, bd=0, relief='flat',
                                         highlightbackground='#d9d9d9', highlightcolor='#d9d9d9')
         self.connect_button.pack(side=tk.LEFT)
+
+        # 添加连接状态显示
+        self.status_frame = tk.Frame(target_frame, bg='#d9d9d9')
+        self.status_frame.pack(side=tk.LEFT)
+
+        # 状态圆圈
+        self.status_canvas = tk.Canvas(self.status_frame, width=20, height=20, bg='#d9d9d9',
+                                       highlightthickness=0)
+        self.status_canvas.pack(side=tk.LEFT, padx=(0, 5))
+        self.status_circle = self.status_canvas.create_oval(5, 5, 15, 15, fill='red', outline='')
+
+        # 状态文字
+        self.status_label = tk.Label(self.status_frame, text="目标机离线", font=("Arial", 10),
+                                     bg='#d9d9d9', fg='red')
+        self.status_label.pack(side=tk.LEFT)
 
         # 模型操作区域（第二行）
         model_ops_frame = tk.Frame(basic_settings_frame, bg='#d9d9d9')
@@ -575,6 +598,9 @@ class HardwareSimulator:
             # 连接操作
             self.connect_button.config(text="连接中...", state="disabled")
 
+            # 更新连接状态显示
+            self._update_connection_status_display(False, force_disconnect=True)
+
             def connect_thread():
                 try:
                     # 创建消息处理器，使用新的回调设计
@@ -597,13 +623,12 @@ class HardwareSimulator:
                 except Exception as e:
                     self.root.after(0, lambda: self.add_log(f"连接过程中发生错误: {e}"))
                     self.root.after(0, lambda: self.connect_button.config(text="连接", state="normal"))
+                    self.root.after(0, lambda: self._update_connection_status_display(False, force_disconnect=True))
 
             threading.Thread(target=connect_thread, daemon=True).start()
         else:
             # 断开连接操作
-            self._disconnect_connections()
-            self.is_connected = False
-            self.connect_button.config(text="连接", bg="SystemButtonFace")
+            self._disconnect_connections(force_status_update=True)
             self.add_log(f"已断开与目标机 {target} 的连接")
 
     def on_system_message(self, message_info):
@@ -627,27 +652,10 @@ class HardwareSimulator:
     def _handle_system_message_ui(self, message_info):
         """在UI线程中处理系统消息"""
         try:
-            msg_type = message_info.get('type', 'unknown')
-            message = message_info.get('message', '')
-            timestamp = message_info.get('timestamp', '')
-            source = message_info.get('source', 'unknown')
-
-            # 根据消息类型进行不同处理
-            if msg_type == 'system_message':
-                log_message = f"[{timestamp}] 系统消息({source}): {message}"
-                self.add_log(log_message)
-
-                # 特殊系统消息处理
-                if "HEARTBEAT" in message:
-                    self._handle_heartbeat_message()
-                elif "CONNECTED" in message:
-                    self._handle_connected_message()
-                elif "ERROR" in message:
-                    self._handle_error_message(message)
-
-            elif msg_type == 'error':
-                log_message = f"[{timestamp}] 错误({source}): {message}"
-                self.add_log(log_message)
+            data = json.loads(message_info)
+            cmd = data.get('cmd', 'unknown')
+            if cmd == 'Heart_ack':
+                self._handle_heartbeat_message(data)
 
         except Exception as e:
             self.add_log(f"处理系统消息UI错误: {e}")
@@ -655,6 +663,7 @@ class HardwareSimulator:
     def _handle_variable_data_ui(self, variable_info):
         """在UI线程中处理变量数据"""
         try:
+            #应该判断cmd类型
             self._update_variables_from_data(variable_info)
             # 检查是否需要更新波形窗口
             vars_dict = variable_info.get('vars', {})
@@ -725,20 +734,42 @@ class HardwareSimulator:
         except Exception as e:
             self.add_log(f"更新变量失败: {e}")
 
-    def _handle_heartbeat_message(self):
-        """处理心跳消息"""
-        # 可以在这里更新连接状态指示器等
-        pass
+    def _handle_heartbeat_message(self, data):
+        """处理心跳响应消息"""
+        print('_handle_heartbeat_message')
+        try:
+            # 更新最后收到心跳的时间
+            self.last_heartbeat_time = time.time()
+
+            # 获取心跳时间戳
+            act_time = data.get('act', '')
+            if act_time:
+                self.add_log(f"收到心跳响应，服务器时间: {act_time}")
+            else:
+                self.add_log("收到心跳响应")
+
+            # 更新连接状态显示
+            self._update_connection_status_display(True)
+
+        except Exception as e:
+            self.add_log(f"处理心跳消息失败: {e}")
 
     def _handle_connected_message(self):
         """处理连接成功消息"""
-        # 更新连接状态UI
-        pass
+        # 更新最后心跳时间
+        self.last_heartbeat_time = time.time()
+
+        # 更新连接状态显示
+        self._update_connection_status_display(True)
+
+        # 启动心跳机制
+        if self.use_heartbeat:
+            self._start_heartbeat_mechanism()
 
     def _handle_error_message(self, message):
         """处理错误消息"""
-        # 显示错误提示等
-        pass
+        self.add_log(f"连接错误: {message}")
+        self._update_connection_status_display(False)
 
     def _update_connection_status(self, target, ctrl_success, status_success):
         """更新连接状态"""
@@ -749,9 +780,25 @@ class HardwareSimulator:
             self.add_log(f"状态链路(9000)连接成功 - 目标机: {target}")
             self.add_log(f"已连接到目标机: {target}")
 
+            # 更新最后心跳时间
+            self.last_heartbeat_time = time.time()
+
+            # 更新连接状态显示
+            self._update_connection_status_display(True, force_disconnect=True)
+
+            # 启动心跳机制
+            if self.use_heartbeat:
+                self._start_heartbeat_mechanism()
+
         else:
             self.is_connected = False
             self.connect_button.config(text="连接", bg="SystemButtonFace", state="normal")
+
+            # 更新连接状态显示
+            self._update_connection_status_display(False, force_disconnect=True)
+
+            # 停止心跳机制
+            self._stop_heartbeat_mechanism()
 
             if not ctrl_success and not status_success:
                 self.add_log(f"连接失败: 控制链路(9001)和状态链路(9000)都无法连接到目标机 {target}")
@@ -768,10 +815,17 @@ class HardwareSimulator:
             self.ctrl_handler = None
             self.status_handler = None
 
-    def _disconnect_connections(self):
-        """断开所有连接"""
+    def _disconnect_connections(self, force_status_update=False):
+        """断开所有连接
+
+        Args:
+            force_status_update: 是否强制更新状态显示
+        """
         # 停止查询定时器
         self._stop_var_query_timer()
+
+        # 停止心跳机制
+        self._stop_heartbeat_mechanism()
 
         # 关闭所有波形窗口
         for variable_name in list(self.waveform_windows.keys()):
@@ -783,6 +837,16 @@ class HardwareSimulator:
         if self.status_handler:
             self.status_handler.stop()
             self.status_handler = None
+
+        # 重置连接状态
+        self.is_connected = False
+        self.last_heartbeat_time = None
+
+        # 更新连接状态显示
+        self.root.after(0, lambda: self._update_connection_status_display(False, force_disconnect=force_status_update))
+
+        # 更新按钮状态
+        self.root.after(0, lambda: self.connect_button.config(text="连接", bg="SystemButtonFace", state="normal"))
 
     def _send_query_var_message(self):
         """发送查询变量消息"""
@@ -964,6 +1028,117 @@ class HardwareSimulator:
         self.log_text.insert(tk.END, log_message)
         self.log_text.see(tk.END)
         self.log_text.update()
+
+    def _send_heartbeat_message(self):
+        if self.ctrl_handler and self.ctrl_handler.is_connected():
+            # 构建心跳消息
+            heartbeat_data = {
+                "cmd": "Heart"
+            }
+            json_str = json.dumps(heartbeat_data)
+            if self.ctrl_handler.send_message(json_str):
+                self.add_log(f"发送心跳: {json_str}")
+            else:
+                self.add_log("心跳发送失败")
+                # 发送失败，更新连接状态
+                self._update_connection_status_display(False)
+
+    def _update_connection_status_display(self, is_online, force_disconnect=False):
+        """更新连接状态显示
+
+        Args:
+            is_online: 是否在线
+            force_disconnect: 是否强制断开连接（避免递归调用）
+        """
+        if is_online:
+            # 在线状态
+            self.status_canvas.itemconfig(self.status_circle, fill='green')
+            self.status_label.config(text="目标机在线", fg='green')
+        else:
+            # 离线状态
+            self.status_canvas.itemconfig(self.status_circle, fill='red')
+            self.status_label.config(text="目标机离线", fg='red')
+
+            # 只有当不是强制断开时才进行断开操作
+            if self.is_connected and not force_disconnect:
+                # 设置 force_disconnect=True 避免递归调用
+                self._disconnect_connections(force_status_update=True)
+
+    def _start_heartbeat_mechanism(self):
+        """启动心跳机制"""
+        if not self.use_heartbeat:
+            return
+
+        # 停止现有的心跳定时器
+        self._stop_heartbeat_mechanism()
+
+        # 发送第一次心跳
+        if self.is_connected and self.ctrl_handler and self.ctrl_handler.is_connected():
+            self._send_heartbeat_message()
+
+        # 启动心跳定时器
+        if self.is_connected:
+            self.heartbeat_timer = threading.Timer(self.heartbeat_interval, self._heartbeat_periodically)
+            self.heartbeat_timer.daemon = True
+            self.heartbeat_timer.start()
+
+            # 启动状态检查定时器
+            self._start_status_check_timer()
+
+    def _stop_heartbeat_mechanism(self):
+        """停止心跳机制"""
+        if self.heartbeat_timer:
+            self.heartbeat_timer.cancel()
+            self.heartbeat_timer = None
+
+        if self.status_check_timer:
+            self.status_check_timer.cancel()
+            self.status_check_timer = None
+
+    def _heartbeat_periodically(self):
+        """定时发送心跳"""
+        if self.is_connected and self.use_heartbeat:
+            try:
+                if self.ctrl_handler and self.ctrl_handler.is_connected():
+                    self._send_heartbeat_message()
+            except Exception as e:
+                self.add_log(f"发送心跳失败: {e}")
+
+            # 重新设置定时器
+            if self.is_connected and self.use_heartbeat:
+                self.heartbeat_timer = threading.Timer(self.heartbeat_interval, self._heartbeat_periodically)
+                self.heartbeat_timer.daemon = True
+                self.heartbeat_timer.start()
+
+    def _start_status_check_timer(self):
+        """启动状态检查定时器"""
+        if not self.use_heartbeat:
+            return
+
+        # 停止现有的状态检查定时器
+        if self.status_check_timer:
+            self.status_check_timer.cancel()
+
+        # 启动新的状态检查定时器
+        self.status_check_timer = threading.Timer(self.heartbeat_timeout, self._check_connection_status)
+        self.status_check_timer.daemon = True
+        self.status_check_timer.start()
+
+    def _check_connection_status(self):
+        """检查连接状态"""
+        if not self.use_heartbeat or not self.is_connected:
+            return
+
+        current_time = time.time()
+
+        # 检查是否超时
+        if self.last_heartbeat_time is None or (current_time - self.last_heartbeat_time) > self.heartbeat_timeout:
+            # 心跳超时，连接断开
+            self.add_log("心跳超时，连接已断开")
+            self.root.after(0, lambda: self._update_connection_status_display(False, force_disconnect=True))
+        else:
+            # 连接正常，继续检查
+            self._start_status_check_timer()
 
 
 if __name__ == "__main__":

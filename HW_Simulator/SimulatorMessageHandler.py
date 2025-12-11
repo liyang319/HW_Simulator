@@ -18,29 +18,7 @@ class CtrlMessageHandler(TCPMessageHandler):
 
             # 如果有回调函数，传递系统消息
             if self.message_callback:
-                message_info = {
-                    'type': 'system_message',
-                    'message': message,
-                    'timestamp': self._get_timestamp(),
-                    'source': 'control_link'
-                }
-                self.message_callback(message_info)
-
-            # 根据消息内容执行具体控制逻辑
-            if "HEARTBEAT" in message:
-                self._handle_heartbeat()
-            elif "CONNECTED" in message:
-                self._handle_connected()
-            elif "ERROR" in message:
-                self._handle_error(message)
-            elif "MODEL_START" in message:
-                self._handle_model_start()
-            elif "MODEL_STOP" in message:
-                self._handle_model_stop()
-            elif "PARAM_UPDATE" in message:
-                self._handle_param_update(message)
-            else:
-                self._handle_unknown_message(message)
+                self.message_callback(message)
 
         except Exception as e:
             self.logger.error(f"处理控制链路数据失败: {e}")
