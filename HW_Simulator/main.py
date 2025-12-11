@@ -557,13 +557,13 @@ class HardwareSimulator:
                 # 从字典中移除
                 del self.waveform_windows[variable_name]
 
-    def _update_waveform_data(self, variable_name, value, timestamp):
+    def _update_waveform_data(self, variable_name, value):
         """更新波形窗口数据"""
         try:
             if variable_name in self.waveform_windows:
                 window = self.waveform_windows[variable_name]
                 if window.is_open():
-                    window.add_data_point(value, timestamp)
+                    window.add_data_point(value)
         except Exception as e:
             # 静默处理错误，避免影响主程序
             pass
@@ -665,8 +665,8 @@ class HardwareSimulator:
                         window = self.waveform_windows[var_name]
                         if window.is_open():
                             # 在UI线程中更新波形
-                            self.root.after(0, lambda vn=var_name, vv=var_value, ts=timestamp:
-                            self._update_waveform_data(vn, vv, ts))
+                            self.root.after(0, lambda vn=var_name, vv=var_value:
+                            self._update_waveform_data(vn, vv))
 
         except Exception as e:
             self.add_log(f"处理变量数据UI错误: {e}")

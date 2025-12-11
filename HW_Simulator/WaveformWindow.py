@@ -10,29 +10,28 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 import matplotlib.font_manager as fm
-import numpy as np
 
 
 def get_system_chinese_font():
     """获取系统可用的中文字体"""
     font_paths = []
 
-    if sys.platform == 'win32':  # Windows
+    if sys.platform == 'win32': #Windows
         windir = os.environ.get('WINDIR', 'C:\\Windows')
         font_paths = [
             os.path.join(windir, 'Fonts', 'msyh.ttc'),
             os.path.join(windir, 'Fonts', 'simhei.ttf'),
             os.path.join(windir, 'Fonts', 'simsun.ttc'),
         ]
-    elif sys.platform == 'darwin':  # macOS
+    elif sys.platform == 'darwin':  #macOS
         font_paths = [
             '/System/Library/Fonts/PingFang.ttc',
             '/System/Library/Fonts/STHeiti Light.ttc',
+            '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc',
         ]
-    else:  # Linux
+    else:   #Linux
         font_paths = [
             '/usr/share/fonts/truetype/wqy/wqy-microhei.ttc',
-            '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc',
         ]
 
     for font_path in font_paths:
@@ -53,7 +52,6 @@ def setup_matplotlib_chinese_font():
 
             plt.rcParams['font.sans-serif'] = [font_name]
             plt.rcParams['axes.unicode_minus'] = False
-
             print(f"已设置matplotlib中文字体: {font_name}")
             return True
         else:
@@ -70,7 +68,7 @@ setup_matplotlib_chinese_font()
 
 
 class WaveformWindow:
-    """波形显示窗口 - 滑动窗口版本"""
+    """波形显示窗口 - 内部计时版本"""
 
     def __init__(self, parent, variable_name, max_points=500):
         """
@@ -83,17 +81,17 @@ class WaveformWindow:
         """
         self.window = tk.Toplevel(parent)
         self.window.title(f"波形显示 - {variable_name}")
-        self.window.geometry("800x500")
+        self.window.geometry("850x550")
         self.variable_name = variable_name
         self.max_points = max_points
 
         # 数据存储
-        self.timestamps = deque(maxlen=max_points)
+        self.timestamps = deque(maxlen=max_points)  # 相对时间，从0开始
         self.values = deque(maxlen=max_points)
-        self.start_time = time.time()
+        self.window_start_time = None  # 第一个数据点到达的时间
 
         # 显示模式
-        self.display_mode = "sliding"  # "sliding" 或 "fixed"
+        self.display_mode = "sliding"
         self.window_size = 10.0  # 滑动窗口大小（秒）
 
         # 创建matplotlib图形
@@ -109,6 +107,9 @@ class WaveformWindow:
         # 创建初始线条
         self.line, = self.ax.plot([], [], 'b-', linewidth=2, label=variable_name)
         self.ax.legend(loc='upper right')
+
+        # 禁用科学计数法
+        self.ax.ticklabel_format(useOffset=False, style='plain')
 
         # 初始坐标轴范围
         self.ax.set_xlim(0, self.window_size)
@@ -126,6 +127,9 @@ class WaveformWindow:
         self.last_value = None
         self.max_value = None
         self.min_value = None
+        self.is_paused = False
+        self.data_count = 0
+        self.last_data_time = None
 
     def _create_control_panel(self):
         """创建控制面板"""
@@ -188,8 +192,15 @@ class WaveformWindow:
         self.points_label = tk.Label(info_frame, text="点数: 0", font=("Arial", 10))
         self.points_label.pack(side=tk.LEFT)
 
-        # 控制变量
-        self.is_paused = False
+        # 时间信息
+        time_frame = tk.Frame(self.window)
+        time_frame.pack(fill=tk.X, padx=10, pady=(0, 5))
+
+        self.elapsed_label = tk.Label(time_frame, text="波形时间: 0.0s", font=("Arial", 9))
+        self.elapsed_label.pack(side=tk.LEFT, padx=(0, 20))
+
+        self.rate_label = tk.Label(time_frame, text="频率: 0.0 Hz", font=("Arial", 9))
+        self.rate_label.pack(side=tk.LEFT)
 
     def _on_mode_change(self):
         """显示模式改变时的处理"""
@@ -201,13 +212,12 @@ class WaveformWindow:
                 self.window_size = 10.0
         self._update_plot()
 
-    def add_data_point(self, value, timestamp=None):
+    def add_data_point(self, value):
         """
         添加数据点
 
         Args:
             value: 变量值
-            timestamp: 时间戳，None表示使用当前时间
         """
         if self.is_paused:
             return
@@ -216,12 +226,21 @@ class WaveformWindow:
             # 尝试转换为浮点数
             float_value = float(value)
 
-            if timestamp is None:
-                timestamp = time.time() - self.start_time
+            # 如果是第一个数据点，记录开始时间
+            if self.window_start_time is None:
+                self.window_start_time = time.time()
+
+            # 计算相对时间（从第一个数据点开始）
+            current_time = time.time()
+            elapsed_time = current_time - self.window_start_time
+
+            # 记录最后数据时间
+            self.last_data_time = current_time
 
             # 添加数据
-            self.timestamps.append(timestamp)
+            self.timestamps.append(elapsed_time)
             self.values.append(float_value)
+            self.data_count += 1
 
             # 更新统计信息
             self.last_value = float_value
@@ -259,13 +278,16 @@ class WaveformWindow:
 
         if self.display_mode == "sliding":
             # 滑动窗口模式
-            current_time = self.timestamps[-1]
-            window_start = max(0, current_time - self.window_size)
-            window_end = current_time
+            if len(self.timestamps) > 0:
+                current_time = self.timestamps[-1]
+                window_start = max(0, current_time - self.window_size)
+                window_end = current_time
 
-            # 添加5%的边距
-            margin = (window_end - window_start) * 0.05
-            self.ax.set_xlim(window_start - margin, window_end + margin)
+                # 添加5%的边距
+                margin = (window_end - window_start) * 0.05
+                x_min = window_start - margin
+                x_max = window_end + margin
+                self.ax.set_xlim(x_min, x_max)
         else:
             # 全部显示模式
             if len(self.timestamps) > 1:
@@ -280,7 +302,10 @@ class WaveformWindow:
 
                 # 添加5%的边距
                 margin = (x_max - x_min) * 0.05
-                self.ax.set_xlim(x_min - margin, x_max + margin)
+                x_min -= margin
+                x_max += margin
+
+                self.ax.set_xlim(x_min, x_max)
 
         # 调整Y轴范围
         if len(self.values) > 0:
@@ -314,10 +339,24 @@ class WaveformWindow:
 
         self.points_label.config(text=f"点数: {len(self.timestamps)}")
 
+        # 更新时间信息
+        if self.last_data_time is not None and self.window_start_time is not None:
+            elapsed = self.last_data_time - self.window_start_time
+            self.elapsed_label.config(text=f"波形时间: {elapsed:.1f}s")
+
+            # 计算数据频率
+            if elapsed > 0 and self.data_count > 1:
+                frequency = self.data_count / elapsed
+                self.rate_label.config(text=f"频率: {frequency:.2f} Hz")
+
     def toggle_pause(self):
         """切换暂停状态"""
         self.is_paused = not self.is_paused
         self.pause_button.config(text="继续" if self.is_paused else "暂停")
+
+        if not self.is_paused and self.window_start_time is None:
+            # 如果从暂停恢复且没有开始时间，重置
+            self.window_start_time = time.time()
 
     def clear_data(self):
         """清除数据"""
@@ -326,6 +365,9 @@ class WaveformWindow:
         self.max_value = None
         self.min_value = None
         self.last_value = None
+        self.window_start_time = None
+        self.last_data_time = None
+        self.data_count = 0
 
         # 清除图形
         self.line.set_data([], [])
@@ -339,6 +381,8 @@ class WaveformWindow:
         self.max_value_label.config(text="最大值: --")
         self.min_value_label.config(text="最小值: --")
         self.points_label.config(text="点数: 0")
+        self.elapsed_label.config(text="波形时间: 0.0s")
+        self.rate_label.config(text="频率: 0.0 Hz")
 
         self.canvas.draw()
 
@@ -355,4 +399,3 @@ class WaveformWindow:
             self.window.destroy()
         except:
             pass
-
