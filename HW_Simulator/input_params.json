@@ -1,32 +1,32 @@
 [
   {
-    "param": "采样频率",
-    "type": "int",
+    "param": "param1",
+    "type": "float",
     "val": "1000"
   },
   {
-    "param": "仿真时长",
+    "param": "param2",
     "type": "float",
     "val": "10.5"
   },
   {
-    "param": "模型名称",
-    "type": "string",
-    "val": "test_model"
+    "param": "param3",
+    "type": "float",
+    "val": "100"
   },
   {
-    "param": "参数A",
-    "type": "int",
+    "param": "param4",
+    "type": "float",
     "val": "50"
   },
   {
-    "param": "参数B",
+    "param": "param5",
     "type": "float",
     "val": "3.14"
   },
   {
-    "param": "参数C",
-    "type": "string",
-    "val": "default"
+    "param": "param6",
+    "type": "float",
+    "val": "0.1"
   }
 ]

@@ -60,6 +60,9 @@ class HardwareSimulator:
         self.input_params = self.load_json_file("input_params.json")
         self.watch_variables = self.load_json_file("watch_variables.json")
 
+        # 保存原始参数值（用于比较修改）
+        self.original_input_params = [param.copy() for param in self.input_params]
+
         # 存储表格行引用
         self.param_rows = []
         self.watch_rows = []
@@ -225,7 +228,19 @@ class HardwareSimulator:
                                         command=self.send_parameters, bg='#d9d9d9',
                                         highlightthickness=0, bd=0, relief='flat',
                                         highlightbackground='#d9d9d9', highlightcolor='#d9d9d9')
-        self.param_send_btn.pack(side=tk.LEFT)
+        self.param_send_btn.pack(side=tk.LEFT, padx=(20, 20))
+
+        # 添加"参数复位"按钮
+        self.param_reset_btn = tk.Button(left_title_frame, text="参数复位", width=10, font=("Arial", 10),
+                                         command=self.reset_parameters, bg='#d9d9d9',
+                                         highlightthickness=0, bd=0, relief='flat',
+                                         highlightbackground='#d9d9d9', highlightcolor='#d9d9d9')
+        self.param_reset_btn.pack(side=tk.LEFT)
+
+        # 修改状态标签
+        self.modified_label = tk.Label(left_title_frame, text="", font=("Arial", 9),
+                                       bg='#d9d9d9', fg='red')
+        self.modified_label.pack(side=tk.LEFT, padx=(30, 10))
 
         # 右侧：变量监视标题
         right_title_frame = tk.Frame(table_titles_frame, bg='#d9d9d9')
@@ -511,14 +526,20 @@ class HardwareSimulator:
         """编辑参数值"""
         current_value = label.cget("text")
 
+        # 记录原始值用于比较
+        original_value = self.input_params[idx].get("val", "")
+
         # 创建编辑窗口
         edit_win = tk.Toplevel(self.root)
         edit_win.title("编辑参数值")
-        edit_win.geometry("300x100")
+        edit_win.geometry("350x150")
         edit_win.transient(self.root)
         edit_win.grab_set()
 
-        tk.Label(edit_win, text="输入新值:").pack(pady=5)
+        tk.Label(edit_win, text=f"参数: {self.input_params[idx].get('param', f'参数{idx + 1}')}",
+                 font=("Arial", 10, "bold")).pack(pady=(10, 5))
+
+        # tk.Label(edit_win, text="输入新值:").pack()
 
         entry = tk.Entry(edit_win, width=30)
         entry.insert(0, current_value)
@@ -526,18 +547,39 @@ class HardwareSimulator:
         entry.focus_set()
         entry.select_range(0, tk.END)
 
+        # 显示原始值
+        # tk.Label(edit_win, text=f"原始值: {original_value}",
+        #          font=("Arial", 9), fg="gray").pack(pady=5)
+
         def save_edit():
             new_value = entry.get()
             label.config(text=new_value)
 
             # 更新内存中的数据
             if 0 <= idx < len(self.input_params):
+                # 记录旧值
+                old_value = self.input_params[idx].get("val", "")
+                # 更新为新值
                 self.input_params[idx]["val"] = new_value
 
-            self.add_log(f"修改参数值为: {new_value}")
+                # 修改日志：记录从什么值修改为什么值
+                param_name = self.input_params[idx].get("param", f"参数{idx + 1}")
+                if old_value != new_value:
+                    self.add_log(f"参数 '{param_name}' 值由 '{old_value}' 修改为 '{new_value}'")
+                else:
+                    self.add_log(f"参数 '{param_name}' 值未改变: {new_value}")
+
+            # 更新修改状态显示
+            self._update_modified_status()
+
             edit_win.destroy()
 
-        tk.Button(edit_win, text="确定", command=save_edit).pack(pady=5)
+        button_frame = tk.Frame(edit_win)
+        button_frame.pack(pady=10)
+
+        tk.Button(button_frame, text="确定", width=8, command=save_edit).pack(side=tk.LEFT, padx=5)
+        tk.Button(button_frame, text="取消", width=8, command=edit_win.destroy).pack(side=tk.LEFT, padx=5)
+
         entry.bind("<Return>", lambda e: save_edit())
 
     def on_waveform_click_new(self, variable_name):
@@ -926,24 +968,161 @@ class HardwareSimulator:
 
         threading.Thread(target=simulate_download, daemon=True).start()
 
-    def send_parameters(self):
-        """下发参数"""
+    def send_parameters(self, b_all_param=False):
+        """
+        下发参数
+
+        Args:
+            b_all_param: True表示发送所有参数，False表示只发送修改过的参数
+        """
         if not self.is_connected or not self.ctrl_handler:
             messagebox.showwarning("警告", "请先连接到目标机")
             return
 
-        self.add_log("参数下发中...")
+        # 构建参数数据
+        param_data = {}
+        param_count = 0
 
-        # 构建参数消息
-        param_message = "PARAM_SET:"
-        for param in self.input_params:
-            param_message += f"{param['param']}={param['val']};"
+        for i, param in enumerate(self.input_params):
+            param_name = param.get("param", f"param{i + 1}")
+            current_value = param.get("val", "")
 
-        # 通过控制链路发送参数
-        if self.ctrl_handler.send_message(param_message):
-            self.add_log("参数消息已发送")
+            if b_all_param:
+                # 发送所有参数
+                param_data[param_name] = current_value
+                param_count += 1
+            else:
+                # 只发送修改过的参数
+                if i < len(self.original_input_params):
+                    original_value = self.original_input_params[i].get("val", "")
+                    if current_value != original_value:
+                        param_data[param_name] = current_value
+                        param_count += 1
+                else:
+                    # 如果原始参数中没有这个参数，认为是新增的，需要发送
+                    param_data[param_name] = current_value
+                    param_count += 1
+
+        # 如果没有修改过的参数，不发送
+        if not b_all_param and param_count == 0:
+            messagebox.showinfo("提示", "没有修改过的参数")
+            self.add_log("没有修改过的参数，不发送")
+            return
+
+        self.add_log(f"参数下发中... 发送{param_count}个参数")
+
+        # 构建JSON消息
+        json_data = {
+            "cmd": "SetParams",
+            "count": param_count,
+            "params": param_data
+        }
+
+        try:
+            json_str = json.dumps(json_data, ensure_ascii=False)
+            self.add_log(f"发送参数: {json_str}")
+
+            # 通过控制链路发送参数
+            if self.ctrl_handler.send_message(json_str):
+                self.add_log("参数消息已发送")
+
+                # 如果发送成功，更新原始参数值
+                if not b_all_param:
+                    self._update_original_params()
+            else:
+                self.add_log("参数发送失败")
+
+        except Exception as e:
+            self.add_log(f"参数发送失败: {e}")
+
+    def _update_original_params(self):
+        """更新原始参数值为当前值"""
+        self.original_input_params = [param.copy() for param in self.input_params]
+        self.add_log("已更新参数修改记录")
+
+    def reset_original_params(self):
+        """重置原始参数为当前值"""
+        self._update_original_params()
+        self.add_log("已重置原始参数")
+
+    def _check_params_modified(self):
+        """检查是否有参数被修改（用于UI状态显示等）"""
+        if len(self.input_params) != len(self.original_input_params):
+            return True
+
+        for i, param in enumerate(self.input_params):
+            if i >= len(self.original_input_params):
+                return True
+
+            current_value = param.get("val", "")
+            original_value = self.original_input_params[i].get("val", "")
+
+            if current_value != original_value:
+                return True
+
+        return False
+
+    def _get_modified_params_count(self):
+        """获取被修改的参数数量"""
+        count = 0
+
+        for i, param in enumerate(self.input_params):
+            if i >= len(self.original_input_params):
+                count += 1
+                continue
+
+            current_value = param.get("val", "")
+            original_value = self.original_input_params[i].get("val", "")
+
+            if current_value != original_value:
+                count += 1
+
+        return count
+
+    def _update_modified_status(self):
+        """更新修改状态显示"""
+        modified_count = self._get_modified_params_count()
+        if modified_count > 0:
+            self.modified_label.config(text=f"已修改: {modified_count}个", fg='red')
         else:
-            self.add_log("参数发送失败")
+            self.modified_label.config(text="", fg='red')
+
+    def reset_parameters(self):
+        """复位所有参数到原始值"""
+        if not self.input_params or not self.original_input_params:
+            messagebox.showinfo("提示", "没有参数可复位")
+            return
+
+        # 统计复位数量
+        reset_count = 0
+
+        for i, param in enumerate(self.input_params):
+            if i < len(self.original_input_params):
+                current_value = param.get("val", "")
+                original_value = self.original_input_params[i].get("val", "")
+
+                # 如果值不同，进行复位
+                if current_value != original_value:
+                    param["val"] = original_value
+                    reset_count += 1
+
+                    # 更新表格显示
+                    if i < len(self.param_rows):
+                        self.param_rows[i]['value'].config(text=original_value)
+
+        if reset_count > 0:
+            # 更新表格显示
+            self.update_params_table()
+
+            # 记录日志
+            self.add_log(f"已复位 {reset_count} 个参数到原始值")
+            messagebox.showinfo("成功", f"已复位 {reset_count} 个参数")
+        else:
+            messagebox.showinfo("提示", "没有需要复位的参数")
+
+        # 更新修改状态显示
+        if hasattr(self, '_update_modified_status'):
+            self._update_modified_status()
 
     def toggle_model_run(self):
         """切换模型运行状态"""
