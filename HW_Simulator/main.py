@@ -972,7 +972,7 @@ class HardwareSimulator:
 
         threading.Thread(target=simulate_download, daemon=True).start()
 
-    def send_parameters(self, b_all_param=True):
+    def send_parameters(self, b_all_param=False):
         """
         下发参数
 
@@ -981,6 +981,15 @@ class HardwareSimulator:
         """
         if not self.is_connected or not self.ctrl_handler:
             messagebox.showwarning("警告", "请先连接到目标机")
+            return
+
+        # 检查是否有参数被修改
+        has_modified = self._check_params_modified()
+
+        if not has_modified:
+            # 两种模式下，没有修改都提示并取消
+            messagebox.showinfo("提示", "没有修改过的参数")
+            self.add_log("没有修改过的参数，取消发送")
             return
 
         # 构建参数数据
@@ -1005,19 +1014,24 @@ class HardwareSimulator:
 
         param_count = len(param_data)
 
-        # 如果没有修改过的参数，不发送
+        # 对于只发送修改的情况，再次检查（虽然前面检查过，但这里再做一次安全验证）
         if not b_all_param and param_count == 0:
             messagebox.showinfo("提示", "没有修改过的参数")
             self.add_log("没有修改过的参数，不发送")
             return
 
-        self.add_log(f"参数下发中... 发送{param_count}个参数")
+        # 添加日志说明发送模式
+        if b_all_param:
+            modified_count = self._get_modified_params_count() if hasattr(self, '_get_modified_params_count') else 0
+            self.add_log(f"发送所有参数... 共{len(self.input_params)}个参数（其中{modified_count}个被修改）")
+        else:
+            self.add_log(f"发送修改过的参数... 共{param_count}个参数")
 
         # 构建JSON消息
         json_data = {
             "cmd": "SetParams",
             "count": param_count,
-            "vars": param_data
+            "params": param_data
         }
 
         try:
@@ -1028,8 +1042,7 @@ class HardwareSimulator:
             if self.ctrl_handler.send_message(json_str):
                 self.add_log(f"参数消息已发送 ({param_count}个参数)")
 
-                # 重要：发送成功后，无论是否发送所有参数，都更新原始参数值
-                # 这样修改状态就会被复位
+                # 发送成功后，更新原始参数值
                 self.original_input_params = [param.copy() for param in self.input_params]
 
                 # 更新修改状态显示
