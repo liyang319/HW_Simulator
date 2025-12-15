@@ -70,6 +70,10 @@ class HardwareSimulator:
         self.create_widgets()
         self.add_log("系统启动成功...")
 
+        # 初始化修改状态显示
+        if hasattr(self, '_update_modified_status'):
+            self._update_modified_status()
+
     def create_sample_json_files(self):
         """创建示例JSON文件"""
         try:
@@ -968,7 +972,7 @@ class HardwareSimulator:
 
         threading.Thread(target=simulate_download, daemon=True).start()
 
-    def send_parameters(self, b_all_param=False):
+    def send_parameters(self, b_all_param=True):
         """
         下发参数
 
@@ -981,7 +985,6 @@ class HardwareSimulator:
 
         # 构建参数数据
         param_data = {}
-        param_count = 0
 
         for i, param in enumerate(self.input_params):
             param_name = param.get("param", f"param{i + 1}")
@@ -990,18 +993,17 @@ class HardwareSimulator:
             if b_all_param:
                 # 发送所有参数
                 param_data[param_name] = current_value
-                param_count += 1
             else:
                 # 只发送修改过的参数
                 if i < len(self.original_input_params):
                     original_value = self.original_input_params[i].get("val", "")
                     if current_value != original_value:
                         param_data[param_name] = current_value
-                        param_count += 1
                 else:
-                    # 如果原始参数中没有这个参数，认为是新增的，需要发送
+                    # 新增的参数
                     param_data[param_name] = current_value
-                    param_count += 1
+
+        param_count = len(param_data)
 
         # 如果没有修改过的参数，不发送
         if not b_all_param and param_count == 0:
@@ -1015,7 +1017,7 @@ class HardwareSimulator:
         json_data = {
             "cmd": "SetParams",
             "count": param_count,
-            "params": param_data
+            "vars": param_data
         }
 
         try:
@@ -1024,11 +1026,16 @@ class HardwareSimulator:
 
             # 通过控制链路发送参数
             if self.ctrl_handler.send_message(json_str):
-                self.add_log("参数消息已发送")
+                self.add_log(f"参数消息已发送 ({param_count}个参数)")
 
-                # 如果发送成功，更新原始参数值
-                if not b_all_param:
-                    self._update_original_params()
+                # 重要：发送成功后，无论是否发送所有参数，都更新原始参数值
+                # 这样修改状态就会被复位
+                self.original_input_params = [param.copy() for param in self.input_params]
+
+                # 更新修改状态显示
+                if hasattr(self, '_update_modified_status'):
+                    self._update_modified_status()
+
             else:
                 self.add_log("参数发送失败")
 
