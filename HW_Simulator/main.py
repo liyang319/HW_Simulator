@@ -7,6 +7,11 @@ from datetime import datetime
 from TCPClient import TCPClient
 from SimulatorMessageHandler import CtrlMessageHandler, StatusMessageHandler
 from WaveformWindow import WaveformWindow
+import pandas as pd
+import openpyxl
+from openpyxl import Workbook
+from openpyxl.utils import get_column_letter
+import os
 
 
 class HardwareSimulator:
@@ -70,6 +75,12 @@ class HardwareSimulator:
         self.create_widgets()
         self.add_log("系统启动成功...")
 
+        # 数据记录相关
+        self.data_record_file = "仿真数据记录.xlsx"
+        self.param_record_count = 0
+        self.var_record_count = 0
+        self.init_data_record_file()  # 初始化Excel文件
+
         # 初始化修改状态显示
         if hasattr(self, '_update_modified_status'):
             self._update_modified_status()
@@ -123,6 +134,128 @@ class HardwareSimulator:
         except json.JSONDecodeError as e:
             print(f"错误: 文件 {filename} JSON格式错误: {e}")
             return []
+
+    def init_data_record_file(self):
+        """初始化数据记录Excel文件"""
+        try:
+            # 检查文件是否已存在
+            if os.path.exists(self.data_record_file):
+                self.add_log(f"数据记录文件已存在: {self.data_record_file}")
+                return
+
+            # 创建新的Excel文件
+            with pd.ExcelWriter(self.data_record_file, engine='openpyxl') as writer:
+                # 创建输入参数表格
+                param_headers = ["编号"]
+                for i, param in enumerate(self.input_params, 1):
+                    param_name = param.get("param", f"param{i}")
+                    param_headers.append(param_name)
+                param_headers.append("时间")
+
+                # 创建空的DataFrame
+                param_df = pd.DataFrame(columns=param_headers)
+                param_df.to_excel(writer, sheet_name='输入参数', index=False)
+
+                # 创建观察变量表格
+                var_headers = ["编号"]
+                for i, var in enumerate(self.watch_variables, 1):
+                    var_name = var.get("variable", f"var{i}")
+                    var_headers.append(var_name)
+                var_headers.append("时间")
+
+                var_df = pd.DataFrame(columns=var_headers)
+                var_df.to_excel(writer, sheet_name='观察变量', index=False)
+
+            self.add_log(f"已创建数据记录文件: {self.data_record_file}")
+
+        except Exception as e:
+            self.add_log(f"初始化数据记录文件失败: {e}")
+
+    def record_parameters(self, params_data, timestamp=None):
+        """记录参数数据到Excel文件"""
+        try:
+            if timestamp is None:
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+            # 构建数据行
+            self.param_record_count += 1
+            row_data = [self.param_record_count]
+
+            # 按参数顺序添加值
+            for param in self.input_params:
+                param_name = param.get("param", "")
+                param_value = params_data.get(param_name, "")
+                row_data.append(param_value)
+
+            row_data.append(timestamp)
+
+            # 读取现有数据
+            try:
+                existing_df = pd.read_excel(self.data_record_file, sheet_name='输入参数')
+            except:
+                existing_df = pd.DataFrame()
+
+            # 添加新行
+            headers = ["编号"]
+            for param in self.input_params:
+                headers.append(param.get("param", ""))
+            headers.append("时间")
+
+            new_row = pd.DataFrame([row_data], columns=headers)
+            updated_df = pd.concat([existing_df, new_row], ignore_index=True)
+
+            # 保存到Excel
+            with pd.ExcelWriter(self.data_record_file, engine='openpyxl', mode='a',
+                                if_sheet_exists='replace') as writer:
+                updated_df.to_excel(writer, sheet_name='输入参数', index=False)
+
+            self.add_log(f"已记录参数数据，编号: {self.param_record_count}")
+
+        except Exception as e:
+            self.add_log(f"记录参数数据失败: {e}")
+
+    def record_variables(self, vars_data, timestamp=None):
+        """记录变量数据到Excel文件"""
+        try:
+            if timestamp is None:
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+            # 构建数据行
+            self.var_record_count += 1
+            row_data = [self.var_record_count]
+
+            # 按变量顺序添加值
+            for var in self.watch_variables:
+                var_name = var.get("variable", "")
+                var_value = vars_data.get(var_name, "")
+                row_data.append(var_value)
+
+            row_data.append(timestamp)
+
+            # 读取现有数据
+            try:
+                existing_df = pd.read_excel(self.data_record_file, sheet_name='观察变量')
+            except:
+                existing_df = pd.DataFrame()
+
+            # 添加新行
+            headers = ["编号"]
+            for var in self.watch_variables:
+                headers.append(var.get("variable", ""))
+            headers.append("时间")
+
+            new_row = pd.DataFrame([row_data], columns=headers)
+            updated_df = pd.concat([existing_df, new_row], ignore_index=True)
+
+            # 保存到Excel
+            with pd.ExcelWriter(self.data_record_file, engine='openpyxl', mode='a',
+                                if_sheet_exists='replace') as writer:
+                updated_df.to_excel(writer, sheet_name='观察变量', index=False)
+
+            self.add_log(f"已记录变量数据，编号: {self.var_record_count}")
+
+        except Exception as e:
+            self.add_log(f"记录变量数据失败: {e}")
 
     def create_widgets(self):
         # 主标题
@@ -714,7 +847,25 @@ class HardwareSimulator:
             # 检查是否需要更新波形窗口
             vars_dict = variable_info.get('vars', {})
             if vars_dict:
-                timestamp = time.time()
+                # 获取时间戳
+                timestamp_ms = variable_info.get('time', None)
+                if timestamp_ms:
+                    # 将毫秒时间戳转换为日期时间
+                    try:
+                        timestamp_sec = timestamp_ms / 1000.0
+                        dt = datetime.fromtimestamp(timestamp_sec)
+                        time_str = dt.strftime("%Y-%m-%d %H:%M:%S")
+                    except:
+                        time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                else:
+                    time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+                # 记录变量数据到Excel
+                try:
+                    self.record_variables(vars_dict, time_str)
+                except Exception as e:
+                    self.add_log(f"记录变量数据失败: {e}")
+
                 for var_name, var_value in vars_dict.items():
                     if var_name in self.waveform_windows:
                         window = self.waveform_windows[var_name]
@@ -1042,6 +1193,20 @@ class HardwareSimulator:
             if self.ctrl_handler.send_message(json_str):
                 self.add_log(f"参数消息已发送 ({param_count}个参数)")
 
+                # 记录参数数据
+                try:
+                    # 构建当前所有参数的数据字典
+                    current_params = {}
+                    for param in self.input_params:
+                        param_name = param.get("param", "")
+                        param_value = param.get("val", "")
+                        current_params[param_name] = param_value
+
+                    # 记录到Excel文件
+                    self.record_parameters(current_params)
+                except Exception as e:
+                    self.add_log(f"记录参数数据失败: {e}")
+
                 # 发送成功后，更新原始参数值
                 self.original_input_params = [param.copy() for param in self.input_params]
 
@@ -1158,6 +1323,20 @@ class HardwareSimulator:
             self.start_time = time.time()
             self.stop_timer = False
             self.add_log("模型开始运行")
+            # 记录初始参数
+            try:
+                # 构建初始参数数据字典
+                init_params = {}
+                for param in self.input_params:
+                    param_name = param.get("param", "")
+                    param_value = param.get("val", "")
+                    init_params[param_name] = param_value
+
+                # 记录到Excel文件
+                self.record_parameters(init_params, "初始参数")
+                self.add_log("已记录初始参数")
+            except Exception as e:
+                self.add_log(f"记录初始参数失败: {e}")
 
             # 启动变量查询定时器
             self._start_var_query_timer()
