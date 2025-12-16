@@ -79,6 +79,7 @@ class HardwareSimulator:
         self.data_record_file = "仿真数据记录.xlsx"
         self.param_record_count = 0
         self.var_record_count = 0
+        self.save_data_excel = True  # 数据保存开关，True时保存到Excel，False时不保存
         self.init_data_record_file()  # 初始化Excel文件
 
         # 初始化修改状态显示
@@ -166,6 +167,33 @@ class HardwareSimulator:
                 var_df = pd.DataFrame(columns=var_headers)
                 var_df.to_excel(writer, sheet_name='观察变量', index=False)
 
+                # 设置列格式
+                workbook = writer.book
+                worksheet = workbook['观察变量']
+
+                # 设置编号列为整数格式
+                worksheet.column_dimensions['A'].width = 10
+
+                # 设置时间列格式
+                time_col = get_column_letter(len(var_headers))
+                worksheet.column_dimensions[time_col].width = 20
+
+                # 设置变量值列格式
+                for i, var in enumerate(self.watch_variables, 2):  # 从第2列开始
+                    col_letter = get_column_letter(i)
+                    worksheet.column_dimensions[col_letter].width = 15
+
+                    # 根据变量类型设置格式
+                    var_type = var.get("type", "float")
+                    if var_type == "int":
+                        # 整数格式
+                        for row in range(2, 1002):  # 预设置格式
+                            worksheet.cell(row=row, column=i).number_format = '0'
+                    else:
+                        # 浮点数格式，统一3位小数
+                        for row in range(2, 1002):  # 预设置格式
+                            worksheet.cell(row=row, column=i).number_format = '0.000'
+
             self.add_log(f"已创建数据记录文件: {self.data_record_file}")
 
         except Exception as e:
@@ -174,6 +202,10 @@ class HardwareSimulator:
     def record_parameters(self, params_data, timestamp=None):
         """记录参数数据到Excel文件"""
         try:
+            # 检查数据保存开关
+            if not self.save_data_excel:
+                return
+
             if timestamp is None:
                 timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -217,40 +249,55 @@ class HardwareSimulator:
     def record_variables(self, vars_data, timestamp=None):
         """记录变量数据到Excel文件"""
         try:
+            # 检查数据保存开关
+            if not self.save_data_excel:
+                return
+
             if timestamp is None:
                 timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-            # 构建数据行
-            self.var_record_count += 1
-            row_data = [self.var_record_count]
+            # 使用openpyxl直接写入，保持格式
+            from openpyxl import load_workbook
 
-            # 按变量顺序添加值
-            for var in self.watch_variables:
+            # 加载工作簿
+            workbook = load_workbook(self.data_record_file)
+            worksheet = workbook['观察变量']
+
+            # 找到最后一行
+            last_row = worksheet.max_row + 1
+            self.var_record_count += 1
+
+            # 写入编号
+            worksheet.cell(row=last_row, column=1, value=self.var_record_count)
+
+            # 按变量顺序写入值
+            for i, var in enumerate(self.watch_variables, 2):  # 从第2列开始
                 var_name = var.get("variable", "")
                 var_value = vars_data.get(var_name, "")
-                row_data.append(var_value)
 
-            row_data.append(timestamp)
+                if var_value is not None and var_value != "":
+                    try:
+                        # 尝试转换为数值
+                        num_value = float(var_value)
+                        var_type = var.get("type", "float")
 
-            # 读取现有数据
-            try:
-                existing_df = pd.read_excel(self.data_record_file, sheet_name='观察变量')
-            except:
-                existing_df = pd.DataFrame()
+                        if var_type == "int":
+                            worksheet.cell(row=last_row, column=i, value=int(num_value))
+                        else:
+                            # 浮点数保留3位小数
+                            worksheet.cell(row=last_row, column=i, value=round(num_value, 3))
+                    except (ValueError, TypeError):
+                        # 如果转换失败，使用原始字符串
+                        worksheet.cell(row=last_row, column=i, value=str(var_value))
+                else:
+                    worksheet.cell(row=last_row, column=i, value="")
 
-            # 添加新行
-            headers = ["编号"]
-            for var in self.watch_variables:
-                headers.append(var.get("variable", ""))
-            headers.append("时间")
+            # 写入时间
+            time_col = len(self.watch_variables) + 2
+            worksheet.cell(row=last_row, column=time_col, value=timestamp)
 
-            new_row = pd.DataFrame([row_data], columns=headers)
-            updated_df = pd.concat([existing_df, new_row], ignore_index=True)
-
-            # 保存到Excel
-            with pd.ExcelWriter(self.data_record_file, engine='openpyxl', mode='a',
-                                if_sheet_exists='replace') as writer:
-                updated_df.to_excel(writer, sheet_name='观察变量', index=False)
+            # 保存工作簿
+            workbook.save(self.data_record_file)
 
             self.add_log(f"已记录变量数据，编号: {self.var_record_count}")
 
@@ -842,8 +889,9 @@ class HardwareSimulator:
     def _handle_variable_data_ui(self, variable_info):
         """在UI线程中处理变量数据"""
         try:
-            #应该判断cmd类型
+            # 应该判断cmd类型
             self._update_variables_from_data(variable_info)
+
             # 检查是否需要更新波形窗口
             vars_dict = variable_info.get('vars', {})
             if vars_dict:
@@ -913,13 +961,29 @@ class HardwareSimulator:
                 # 在监视变量列表中查找匹配的变量
                 for var in self.watch_variables:
                     if var.get('variable') == var_name:
-                        # 更新变量值
+                        # 统一处理数值格式
                         old_value = var.get('val', '')
-                        var['val'] = str(var_value)
+
+                        # 确保新值格式统一
+                        if var_value is not None:
+                            try:
+                                # 根据变量类型决定格式
+                                var_type = var.get("type", "float")
+                                if var_type == "int":
+                                    new_value = str(int(float(var_value)))
+                                else:
+                                    # 浮点数统一保留3位小数
+                                    new_value = f"{float(var_value):.3f}"
+                            except (ValueError, TypeError):
+                                new_value = str(var_value)
+                        else:
+                            new_value = ""
+
+                        var['val'] = new_value
 
                         # 记录变化
-                        if old_value != str(var_value):
-                            self.add_log(f"变量更新: {var_name} = {var_value}")
+                        if old_value != new_value:
+                            self.add_log(f"变量更新: {var_name} = {new_value}")
                             updated = True
                         break
 
