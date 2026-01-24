@@ -12,8 +12,10 @@ class HWSimulator:
         self.root = root
         self.root.title("Simulator")
         # 获取屏幕尺寸并设置窗口大小
-        screen_width = self.root.winfo_screenwidth()
-        screen_height = self.root.winfo_screenheight()
+        # screen_width = self.root.winfo_screenwidth()
+        # screen_height = self.root.winfo_screenheight()
+        screen_width = 1000
+        screen_height = 800
         print(f"{screen_width}x{screen_height}")
 
         # 设置窗口为屏幕大小，并定位到左上角
@@ -37,6 +39,8 @@ class HWSimulator:
         # 存储所有标签容器
         self.tab_labels = []
         self.tab_frames = []
+        # 存储所有内容区域
+        self.content_frames = []
 
         # 创建标签页
         self.create_host_management_tab()
@@ -76,15 +80,16 @@ class HWSimulator:
 
         # 创建内容区域
         self.host_content = tk.Frame(self.content_container, bg='#f5f5f5')
+        self.content_frames.append(self.host_content)
 
         # 添加内容文本
-        content_label = tk.Label(self.host_content,
-                                 text="主站管理内容区域",
-                                 font=("Arial", 12),
-                                 bg='#f5f5f5',
-                                 fg='#333333',
-                                 justify='center')
-        content_label.place(relx=0.5, rely=0.5, anchor='center')
+        self.host_content_label = tk.Label(self.host_content,
+                                           text="主站管理内容区域",
+                                           font=("Arial", 12),
+                                           bg='#f5f5f5',
+                                           fg='#333333',
+                                           justify='center')
+        self.host_content_label.place(relx=0.5, rely=0.5, anchor='center')
 
         # 默认显示主机管理内容
         self.host_content.pack(fill=tk.BOTH, expand=True)
@@ -112,15 +117,16 @@ class HWSimulator:
 
         # 创建内容区域
         self.config_content = tk.Frame(self.content_container, bg='#f5f5f5')
+        self.content_frames.append(self.config_content)
 
         # 添加内容文本
-        content_label = tk.Label(self.config_content,
-                                 text="构型管理内容区域",
-                                 font=("Arial", 12),
-                                 bg='#f5f5f5',
-                                 fg='#333333',
-                                 justify='center')
-        content_label.place(relx=0.5, rely=0.5, anchor='center')
+        self.config_content_label = tk.Label(self.config_content,
+                                             text="构型管理内容区域",
+                                             font=("Arial", 12),
+                                             bg='#f5f5f5',
+                                             fg='#333333',
+                                             justify='center')
+        self.config_content_label.place(relx=0.5, rely=0.5, anchor='center')
 
         # 默认隐藏
         self.config_content.pack_forget()
@@ -148,15 +154,16 @@ class HWSimulator:
 
         # 创建内容区域
         self.signal_content = tk.Frame(self.content_container, bg='#f5f5f5')
+        self.content_frames.append(self.signal_content)
 
         # 添加内容文本
-        content_label = tk.Label(self.signal_content,
-                                 text="信号管理内容区域",
-                                 font=("Arial", 12),
-                                 bg='#f5f5f5',
-                                 fg='#333333',
-                                 justify='center')
-        content_label.place(relx=0.5, rely=0.5, anchor='center')
+        self.signal_content_label = tk.Label(self.signal_content,
+                                             text="信号管理内容区域",
+                                             font=("Arial", 12),
+                                             bg='#f5f5f5',
+                                             fg='#333333',
+                                             justify='center')
+        self.signal_content_label.place(relx=0.5, rely=0.5, anchor='center')
 
         # 默认隐藏
         self.signal_content.pack_forget()
@@ -184,50 +191,67 @@ class HWSimulator:
 
         # 创建内容区域
         self.sim_content = tk.Frame(self.content_container, bg='#f5f5f5')
+        self.content_frames.append(self.sim_content)
 
         # 添加内容文本
-        content_label = tk.Label(self.sim_content,
-                                 text="仿真内容区域",
-                                 font=("Arial", 12),
-                                 bg='#f5f5f5',
-                                 fg='#333333',
-                                 justify='center')
-        content_label.place(relx=0.5, rely=0.5, anchor='center')
+        self.sim_content_label = tk.Label(self.sim_content,
+                                          text="仿真内容区域",
+                                          font=("Arial", 12),
+                                          bg='#f5f5f5',
+                                          fg='#333333',
+                                          justify='center')
+        self.sim_content_label.place(relx=0.5, rely=0.5, anchor='center')
 
         # 默认隐藏
         self.sim_content.pack_forget()
 
     def show_host_content(self):
         """显示主站管理内容"""
+        print('show_host_content')
         self.update_tab_appearance(0)
+        # 隐藏所有内容区域
+        for content_frame in self.content_frames:
+            content_frame.pack_forget()
+        # 显示选中内容区域
         self.host_content.pack(fill=tk.BOTH, expand=True)
-        self.config_content.pack_forget()
-        self.signal_content.pack_forget()
-        self.sim_content.pack_forget()
+        # 强制更新界面布局
+        self.host_content.update_idletasks()
 
     def show_config_content(self):
         """显示构型管理内容"""
+        print('show_config_content')
         self.update_tab_appearance(1)
-        self.host_content.pack_forget()
+        # 隐藏所有内容区域
+        for content_frame in self.content_frames:
+            content_frame.pack_forget()
+        # 显示选中内容区域
         self.config_content.pack(fill=tk.BOTH, expand=True)
-        self.signal_content.pack_forget()
-        self.sim_content.pack_forget()
+        # 强制更新界面布局
+        self.config_content.update_idletasks()
 
     def show_signal_content(self):
         """显示信号管理内容"""
+        print('show_signal_content')
         self.update_tab_appearance(2)
-        self.host_content.pack_forget()
-        self.config_content.pack_forget()
+        # 隐藏所有内容区域
+        for content_frame in self.content_frames:
+            content_frame.pack_forget()
+        # 显示选中内容区域
         self.signal_content.pack(fill=tk.BOTH, expand=True)
-        self.sim_content.pack_forget()
+        # 强制更新界面布局
+        self.signal_content.update_idletasks()
 
     def show_sim_content(self):
         """显示仿真内容"""
+        print('show_sim_content')
         self.update_tab_appearance(3)
-        self.host_content.pack_forget()
-        self.config_content.pack_forget()
-        self.signal_content.pack_forget()
+        # 隐藏所有内容区域
+        for content_frame in self.content_frames:
+            content_frame.pack_forget()
+        # 显示选中内容区域
         self.sim_content.pack(fill=tk.BOTH, expand=True)
+        # 强制更新界面布局
+        self.sim_content.update_idletasks()
 
     def update_tab_appearance(self, active_index):
         """更新标签页外观"""
