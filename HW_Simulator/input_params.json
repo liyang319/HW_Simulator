@@ -28,5 +28,15 @@
     "param": "param6",
     "type": "float",
     "val": "0.1"
+  },
+  {
+    "param": "param7",
+    "type": "float",
+    "val": "0.1"
+  },
+  {
+    "param": "param8",
+    "type": "float",
+    "val": "0.1"
   }
 ]

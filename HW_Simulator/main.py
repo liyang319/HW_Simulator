@@ -1387,6 +1387,7 @@ class HardwareSimulator:
             self.start_time = time.time()
             self.stop_timer = False
             self.add_log("模型开始运行")
+            self._send_module_start_message(True)
             # 记录初始参数
             try:
                 # 构建初始参数数据字典
@@ -1420,11 +1421,11 @@ class HardwareSimulator:
             self.run_button.config(text="模型运行", bg="SystemButtonFace")
             self.stop_timer = True
             self.time_label.config(text="00:00:00")
-
+            self.add_log("模型停止运行")
+            self._send_module_start_message(False)
             # 停止查询定时器
             self._stop_var_query_timer()
 
-            self.add_log("模型停止运行")
 
     def update_timer(self):
         """更新运行时间"""
@@ -1482,6 +1483,25 @@ class HardwareSimulator:
                 self.add_log(f"发送心跳: {json_str}")
             else:
                 self.add_log("心跳发送失败")
+                # 发送失败，更新连接状态
+                self._update_connection_status_display(False)
+
+    def _send_module_start_message(self, b_start):
+        if self.ctrl_handler and self.ctrl_handler.is_connected():
+            cmd_type = "ModuleStart"
+            if b_start:
+                cmd_type = "ModuleStart"
+            else:
+                cmd_type = "ModuleStop"
+            # 构建心跳消息
+            start_module_data = {
+                "cmd": cmd_type
+            }
+            json_str = json.dumps(start_module_data)
+            if self.ctrl_handler.send_message(json_str):
+                self.add_log(f"发送启停指令: {json_str}")
+            else:
+                self.add_log("启停指令发送失败")
                 # 发送失败，更新连接状态
                 self._update_connection_status_display(False)
 
