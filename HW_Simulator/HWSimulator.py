@@ -55,7 +55,13 @@ class HWSimulator:
         """设置标签页平均分布布局"""
         # 让所有标签按钮平均分布
         for i, tab_btn in enumerate(self.tab_frames):
-            tab_btn.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=0, pady=0)
+            # 如果不是第一个标签，先添加一个分隔空白
+            if i > 0:
+                # 添加左侧分隔空白，使用浅灰色背景
+                left_spacer = tk.Frame(self.tab_container, bg='#f5f5f5', width=20)
+                left_spacer.pack(side=tk.LEFT, fill=tk.Y)
+
+            tab_btn.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
     def create_host_management_tab(self):
         """创建主站管理标签页"""
