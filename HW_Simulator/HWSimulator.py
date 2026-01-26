@@ -129,14 +129,19 @@ class HWSimulator:
             # IP地址输入框 - 使用ttk.Combobox实现下拉箭头
             ip_var = tk.StringVar(value=f"192.168.1.{100 + i - 1}")
 
-            # 创建下拉选择器
-            ip_combobox = ttk.Combobox(host_frame,
-                                       textvariable=ip_var,
-                                       values=[f"192.168.1.{100 + i - 1}"],
-                                       font=("微软雅黑", 12),
-                                       width=15,
-                                       state="readonly")
-            ip_combobox.pack(side=tk.LEFT, padx=(0, 20))
+            # 创建编辑框框架，用于添加边框
+            ip_frame = tk.Frame(host_frame, bg='white', bd=1, relief='solid')
+            ip_frame.pack(side=tk.LEFT, padx=(0, 20))
+
+            # 创建编辑框
+            ip_entry = tk.Entry(ip_frame,
+                                textvariable=ip_var,
+                                font=("微软雅黑", 12),
+                                width=15,
+                                bd=0,
+                                relief='flat',
+                                highlightthickness=0)
+            ip_entry.pack(padx=5, pady=5)
 
             # 连接按钮 - 纯灰色，无边框
             connect_btn = tk.Button(host_frame,
