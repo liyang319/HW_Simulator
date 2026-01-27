@@ -443,7 +443,7 @@ class HWSimulator:
         self.signal_content.pack_forget()
 
     def create_signal_management_content(self):
-        """创建信号管理内容区域 - 可编辑的表格"""
+        """创建信号管理内容区域 - 简单铺满版本"""
         # 创建主容器
         main_frame = tk.Frame(self.signal_content, bg='white')
         main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
@@ -457,11 +457,16 @@ class HWSimulator:
         title_label.pack(anchor='w', pady=(0, 20))
 
         # 创建表格容器
-        table_container = tk.Frame(main_frame, bg='white', bd=1, relief='solid')
+        table_container = tk.Frame(main_frame, bg='white', bd=0, relief='solid')
         table_container.pack(fill=tk.BOTH, expand=True)
+
+        # 创建内部表格框架
+        inner_frame = tk.Frame(table_container, bg='white')
+        inner_frame.place(relx=0, rely=0, relwidth=1, relheight=1)  # 填满容器
 
         # 表格列配置
         columns = ["信号节点", "上限", "下限", "量纲", "信号源", "单位", "校准", "信号值1", "信号值2", "信号值3"]
+        column_count = len(columns)
 
         # 表格数据
         table_data = [
@@ -475,18 +480,21 @@ class HWSimulator:
 
         # 创建表头
         for col_idx, col_name in enumerate(columns):
-            # 计算x位置
-            x_pos = col_idx * 100  # 每列100像素宽度
+            # 计算相对位置
+            rel_x = col_idx / column_count
+            rel_width = 1 / column_count
 
             # 创建表头单元格
-            header_cell = tk.Frame(table_container, bg='#f0f0f0', width=100, height=40)
-            header_cell.place(x=x_pos, y=0, width=100, height=40)
+            header_cell = tk.Frame(inner_frame, bg='#f0f0f0')
+            header_cell.place(relx=rel_x, y=0, relwidth=rel_width, height=40)
 
             # 添加边框
             border_top = tk.Frame(header_cell, bg='#000000', height=1)
             border_top.place(x=0, y=0, relwidth=1, height=1)
+
             border_right = tk.Frame(header_cell, bg='#000000', width=1)
-            border_right.place(x=99, y=0, width=1, relheight=1)
+            border_right.place(relx=1.0, y=0, x=-1, width=1, relheight=1)
+
             border_bottom = tk.Frame(header_cell, bg='#000000', height=1)
             border_bottom.place(x=0, y=39, relwidth=1, height=1)
 
@@ -503,22 +511,25 @@ class HWSimulator:
         for row_idx, row_data in enumerate(table_data):
             row_entries = []
             for col_idx, cell_value in enumerate(row_data):
-                # 计算位置
-                x_pos = col_idx * 100
+                # 计算相对位置
+                rel_x = col_idx / column_count
+                rel_width = 1 / column_count
                 y_pos = 40 + row_idx * 40
 
                 # 创建单元格框架
-                cell_frame = tk.Frame(table_container, bg='white', width=100, height=40)
-                cell_frame.place(x=x_pos, y=y_pos, width=100, height=40)
+                cell_frame = tk.Frame(inner_frame, bg='white')
+                cell_frame.place(relx=rel_x, y=y_pos, relwidth=rel_width, height=40)
 
                 # 添加边框
                 border_left = tk.Frame(cell_frame, bg='#000000', width=1)
                 border_left.place(x=0, y=0, width=1, relheight=1)
+
                 border_bottom = tk.Frame(cell_frame, bg='#000000', height=1)
                 border_bottom.place(x=0, y=39, relwidth=1, height=1)
-                if col_idx == len(columns) - 1:  # 最后一列添加右边框
+
+                if col_idx == column_count - 1:  # 最后一列添加右边框
                     border_right = tk.Frame(cell_frame, bg='#000000', width=1)
-                    border_right.place(x=99, y=0, width=1, relheight=1)
+                    border_right.place(relx=1.0, y=0, x=-1, width=1, relheight=1)
 
                 # 创建Entry控件
                 cell_entry = tk.Entry(cell_frame,
@@ -529,7 +540,8 @@ class HWSimulator:
                                       fg='#000000',
                                       justify='center')
                 cell_entry.insert(0, cell_value)
-                cell_entry.place(relx=0.5, rely=0.5, anchor='center', width=90, height=30)
+                cell_entry.place(relx=0.5, rely=0.5, anchor='center',
+                                 relwidth=0.9, relheight=0.7)  # 使用相对宽度
 
                 row_entries.append(cell_entry)
 
