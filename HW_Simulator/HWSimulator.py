@@ -495,17 +495,6 @@ class HWSimulator:
         # 强制更新界面布局
         self.host_content.update_idletasks()
 
-    def show_config_content(self):
-        """显示构型管理内容"""
-        print('显示构型管理')
-        self.update_tab_appearance(1)
-        # 隐藏所有内容区域
-        for content_frame in self.content_frames:
-            content_frame.pack_forget()
-        # 显示选中内容区域
-        self.config_content.pack(fill=tk.BOTH, expand=True)
-        # 强制更新界面布局
-        self.config_content.update_idletasks()
 
     def show_signal_content(self):
         """显示信号管理内容"""
