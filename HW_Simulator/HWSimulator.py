@@ -489,14 +489,22 @@ class HWSimulator:
             header_cell.place(relx=rel_x, y=0, relwidth=rel_width, height=40)
 
             # 添加边框
+            # 上边框
             border_top = tk.Frame(header_cell, bg='#000000', height=1)
             border_top.place(x=0, y=0, relwidth=1, height=1)
 
+            # 右边框
             border_right = tk.Frame(header_cell, bg='#000000', width=1)
             border_right.place(relx=1.0, y=0, x=-1, width=1, relheight=1)
 
+            # 下边框
             border_bottom = tk.Frame(header_cell, bg='#000000', height=1)
             border_bottom.place(x=0, y=39, relwidth=1, height=1)
+
+            # 左边框 - 为第一个单元格添加左边框
+            if col_idx == 0:
+                border_left = tk.Frame(header_cell, bg='#000000', width=1)
+                border_left.place(x=0, y=0, width=1, relheight=1)
 
             # 表头标签
             header_label = tk.Label(header_cell,
