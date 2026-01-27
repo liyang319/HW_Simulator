@@ -12,8 +12,10 @@ class HWSimulator:
         self.root = root
         self.root.title("Simulator")
         # 获取屏幕尺寸并设置窗口大小
-        screen_width = 1000
-        screen_height = 800
+        # screen_width = 1000
+        # screen_height = 800
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
         print(f"{screen_width}x{screen_height}")
 
         # 设置窗口为屏幕大小，并定位到左上角
@@ -410,7 +412,7 @@ class HWSimulator:
         self.config_content.update_idletasks()
 
     def create_signal_management_tab(self):
-        """创建信号管理标签页"""
+        """创建信号管理标签页 - 根据图片样式"""
         # 创建标签按钮容器
         tab_btn = tk.Frame(self.tab_container, bg='white', height=40)
         self.tab_frames.append(tab_btn)
@@ -431,20 +433,119 @@ class HWSimulator:
         tab_btn.bind('<Button-1>', lambda e: self.show_signal_content())
 
         # 创建内容区域
-        self.signal_content = tk.Frame(self.content_container, bg='#f5f5f5')
+        self.signal_content = tk.Frame(self.content_container, bg='white')
         self.content_frames.append(self.signal_content)
 
-        # 添加内容文本
-        self.signal_content_label = tk.Label(self.signal_content,
-                                             text="信号管理内容区域",
-                                             font=("Arial", 12),
-                                             bg='#f5f5f5',
-                                             fg='#333333',
-                                             justify='center')
-        self.signal_content_label.place(relx=0.5, rely=0.5, anchor='center')
+        # 创建信号管理内容区域
+        self.create_signal_management_content()
 
         # 默认隐藏
         self.signal_content.pack_forget()
+
+    def create_signal_management_content(self):
+        """创建信号管理内容区域 - 可编辑的表格"""
+        # 创建主容器
+        main_frame = tk.Frame(self.signal_content, bg='white')
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+
+        # 表格标题
+        title_label = tk.Label(main_frame,
+                               text="信号管理",
+                               font=("微软雅黑", 16, "bold"),
+                               bg='white',
+                               fg='#000000')
+        title_label.pack(anchor='w', pady=(0, 20))
+
+        # 创建表格容器
+        table_container = tk.Frame(main_frame, bg='white', bd=1, relief='solid')
+        table_container.pack(fill=tk.BOTH, expand=True)
+
+        # 表格列配置
+        columns = ["信号节点", "上限", "下限", "量纲", "信号源", "单位", "校准", "信号值1", "信号值2", "信号值3"]
+
+        # 表格数据
+        table_data = [
+            ["01_01_01_PO_01", "", "", "", "", "", "", "", "", ""],
+            ["02_02_02_RTD_02", "", "", "", "", "", "", "", "", ""],
+            ["03_03_03_PO_03", "", "", "", "", "", "", "", "", ""]
+        ]
+
+        # 存储所有Entry控件
+        self.signal_entries = []
+
+        # 创建表头
+        for col_idx, col_name in enumerate(columns):
+            # 计算x位置
+            x_pos = col_idx * 100  # 每列100像素宽度
+
+            # 创建表头单元格
+            header_cell = tk.Frame(table_container, bg='#f0f0f0', width=100, height=40)
+            header_cell.place(x=x_pos, y=0, width=100, height=40)
+
+            # 添加边框
+            border_top = tk.Frame(header_cell, bg='#000000', height=1)
+            border_top.place(x=0, y=0, relwidth=1, height=1)
+            border_right = tk.Frame(header_cell, bg='#000000', width=1)
+            border_right.place(x=99, y=0, width=1, relheight=1)
+            border_bottom = tk.Frame(header_cell, bg='#000000', height=1)
+            border_bottom.place(x=0, y=39, relwidth=1, height=1)
+
+            # 表头标签
+            header_label = tk.Label(header_cell,
+                                    text=col_name,
+                                    font=("微软雅黑", 12, "bold"),
+                                    bg='#f0f0f0',
+                                    fg='#000000',
+                                    anchor='center')
+            header_label.place(relx=0.5, rely=0.5, anchor='center')
+
+        # 创建数据行
+        for row_idx, row_data in enumerate(table_data):
+            row_entries = []
+            for col_idx, cell_value in enumerate(row_data):
+                # 计算位置
+                x_pos = col_idx * 100
+                y_pos = 40 + row_idx * 40
+
+                # 创建单元格框架
+                cell_frame = tk.Frame(table_container, bg='white', width=100, height=40)
+                cell_frame.place(x=x_pos, y=y_pos, width=100, height=40)
+
+                # 添加边框
+                border_left = tk.Frame(cell_frame, bg='#000000', width=1)
+                border_left.place(x=0, y=0, width=1, relheight=1)
+                border_bottom = tk.Frame(cell_frame, bg='#000000', height=1)
+                border_bottom.place(x=0, y=39, relwidth=1, height=1)
+                if col_idx == len(columns) - 1:  # 最后一列添加右边框
+                    border_right = tk.Frame(cell_frame, bg='#000000', width=1)
+                    border_right.place(x=99, y=0, width=1, relheight=1)
+
+                # 创建Entry控件
+                cell_entry = tk.Entry(cell_frame,
+                                      font=("微软雅黑", 11),
+                                      bd=0,
+                                      highlightthickness=0,
+                                      bg='white',
+                                      fg='#000000',
+                                      justify='center')
+                cell_entry.insert(0, cell_value)
+                cell_entry.place(relx=0.5, rely=0.5, anchor='center', width=90, height=30)
+
+                row_entries.append(cell_entry)
+
+            self.signal_entries.append(row_entries)
+
+    def show_signal_content(self):
+        """显示信号管理内容"""
+        print('显示信号管理')
+        self.update_tab_appearance(2)
+        # 隐藏所有内容区域
+        for content_frame in self.content_frames:
+            content_frame.pack_forget()
+        # 显示选中内容区域
+        self.signal_content.pack(fill=tk.BOTH, expand=True)
+        # 强制更新界面布局
+        self.signal_content.update_idletasks()
 
     def create_simulation_tab(self):
         """创建仿真标签页"""
@@ -495,18 +596,6 @@ class HWSimulator:
         # 强制更新界面布局
         self.host_content.update_idletasks()
 
-
-    def show_signal_content(self):
-        """显示信号管理内容"""
-        print('显示信号管理')
-        self.update_tab_appearance(2)
-        # 隐藏所有内容区域
-        for content_frame in self.content_frames:
-            content_frame.pack_forget()
-        # 显示选中内容区域
-        self.signal_content.pack(fill=tk.BOTH, expand=True)
-        # 强制更新界面布局
-        self.signal_content.update_idletasks()
 
     def show_sim_content(self):
         """显示仿真内容"""
