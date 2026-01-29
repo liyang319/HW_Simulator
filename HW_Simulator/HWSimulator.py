@@ -684,18 +684,18 @@ class HWSimulator:
                      fg='#000000',
                      anchor='w').pack(fill=tk.BOTH, expand=True, padx=5, pady=5, anchor='w')
 
-            # 第3列：工作状态（绿色圆形）- 居中对齐
+            # 第3列：工作状态（圆形）- 居中对齐
             col3_frame = tk.Frame(table_frame, bg='white')
             col3_frame.grid(row=row_idx + 1, column=2, sticky='nsew', padx=(2, 20), pady=2)
 
-            # 创建绿色圆形 - 居中对齐
+            # 创建圆形 - 初始为红色，居中对齐
             canvas = tk.Canvas(col3_frame,
                                width=20,
                                height=20,
                                bg='white',
                                highlightthickness=0)
             canvas.place(relx=0.5, rely=0.5, anchor='center')
-            canvas.create_oval(2, 2, 18, 18, fill='green', outline='green')
+            canvas.create_oval(2, 2, 18, 18, fill='red', outline='red')  # 修改：初始为红色
 
             # 存储canvas引用，用于后续更新状态
             if row_idx == 0:
@@ -711,7 +711,7 @@ class HWSimulator:
 
             # 创建启动按钮，绑定click事件
             btn = tk.Button(col4_frame,
-                            text="启动",
+                            text="启动",  # 初始文字为"启动"
                             font=("微软雅黑", 12),
                             bg='#e8e8e8',
                             fg='#000000',
@@ -746,12 +746,12 @@ class HWSimulator:
             button = self.sim_start_buttons[index]
             if button.cget("text") == "启动":
                 button.config(text="停止", bg='#d8d8d8')
-                # 更新状态指示灯为红色
-                self.update_status_light(index, 'red')
+                # 更新状态指示灯为绿色
+                self.update_status_light(index, 'green')  # 修改：启动后变为绿色
             else:
                 button.config(text="启动", bg='#e8e8e8')
-                # 更新状态指示灯为绿色
-                self.update_status_light(index, 'green')
+                # 更新状态指示灯为红色
+                self.update_status_light(index, 'red')  # 修改：停止后变为红色
 
     def update_status_light(self, index, color):
         """更新状态指示灯颜色"""
