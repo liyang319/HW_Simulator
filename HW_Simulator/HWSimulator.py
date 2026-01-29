@@ -611,7 +611,7 @@ class HWSimulator:
         self.sim_content.pack_forget()
 
     def create_simulation_content(self):
-        """创建仿真内容区域 - 4列版本，左对齐，启动改为操作"""
+        """创建仿真内容区域 - 工作状态和操作列居中对齐"""
         # 创建主容器
         main_frame = tk.Frame(self.sim_content, bg='white')
         main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
@@ -629,7 +629,7 @@ class HWSimulator:
         table_frame.pack(fill=tk.X)
 
         # 定义4列
-        columns = ["信号ID", "当前值", "工作状态", "操作"]  # 修改：启动改为操作
+        columns = ["信号ID", "当前值", "工作状态", "操作"]
 
         # 表格数据
         data = [
@@ -643,13 +643,19 @@ class HWSimulator:
             cell_frame = tk.Frame(table_frame, bg='white')
             cell_frame.grid(row=0, column=col_idx, sticky='nsew', padx=2, pady=2)
 
+            # 修改：工作状态和操作列表头居中对齐
+            if col_idx in [2, 3]:  # 第3列（工作状态）和第4列（操作）
+                header_anchor = 'center'
+            else:
+                header_anchor = 'w'
+
             header_label = tk.Label(cell_frame,
                                     text=header,
                                     font=("微软雅黑", 12, "bold"),
                                     bg='white',
                                     fg='#000000',
-                                    anchor='w')  # 修改：改为左对齐
-            header_label.pack(fill=tk.BOTH, expand=True, padx=5, pady=5, anchor='w')
+                                    anchor=header_anchor)  # 根据列设置对齐方式
+            header_label.pack(fill=tk.BOTH, expand=True, padx=5, pady=5, anchor=header_anchor)
 
         # 创建数据行
         for row_idx, row_data in enumerate(data):
@@ -662,7 +668,7 @@ class HWSimulator:
                      font=("微软雅黑", 12),
                      bg='white',
                      fg='#000000',
-                     anchor='w').pack(fill=tk.BOTH, expand=True, padx=5, pady=5, anchor='w')  # 修改：改为左对齐
+                     anchor='w').pack(fill=tk.BOTH, expand=True, padx=5, pady=5, anchor='w')
 
             # 第2列：当前值
             col2_frame = tk.Frame(table_frame, bg='white')
@@ -673,27 +679,27 @@ class HWSimulator:
                      font=("微软雅黑", 12),
                      bg='white',
                      fg='#000000',
-                     anchor='w').pack(fill=tk.BOTH, expand=True, padx=5, pady=5, anchor='w')  # 修改：改为左对齐
+                     anchor='w').pack(fill=tk.BOTH, expand=True, padx=5, pady=5, anchor='w')
 
-            # 第3列：工作状态（绿色圆形）
+            # 第3列：工作状态（绿色圆形）- 居中对齐
             col3_frame = tk.Frame(table_frame, bg='white')
             col3_frame.grid(row=row_idx + 1, column=2, sticky='nsew', padx=(2, 20), pady=2)
 
-            # 创建绿色圆形
+            # 创建绿色圆形 - 居中对齐
             canvas = tk.Canvas(col3_frame,
                                width=20,
                                height=20,
                                bg='white',
                                highlightthickness=0)
-            canvas.place(relx=0.0, rely=0.5, anchor='w')  # 修改：改为左对齐
+            canvas.place(relx=0.5, rely=0.5, anchor='center')  # 居中对齐
             canvas.create_oval(2, 2, 18, 18, fill='green', outline='green')
 
-            # 第4列：操作（启动按钮） - 修改：表头改为"操作"
+            # 第4列：操作（启动按钮）- 修改：改为居中对齐
             col4_frame = tk.Frame(table_frame, bg='white')
             col4_frame.grid(row=row_idx + 1, column=3, sticky='nsew', padx=(20, 2), pady=2)
 
             btn = tk.Button(col4_frame,
-                            text="启动",  # 按钮文本保持"启动"
+                            text="启动",
                             font=("微软雅黑", 12),
                             bg='#e8e8e8',
                             fg='#000000',
@@ -702,7 +708,7 @@ class HWSimulator:
                             width=8,
                             padx=5,
                             pady=2)
-            btn.place(relx=0.0, rely=0.5, anchor='w')  # 修改：改为左对齐
+            btn.place(relx=0.5, rely=0.5, anchor='center')  # 修改：改为居中对齐
 
         # 配置列权重
         table_frame.columnconfigure(0, weight=1, uniform="col")
