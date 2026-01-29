@@ -638,12 +638,15 @@ class HWSimulator:
             ["03_03_03_PO_03", "3.33"]
         ]
 
+        # 存储启动按钮，用于状态更新
+        self.sim_start_buttons = []
+
         # 创建表头
         for col_idx, header in enumerate(columns):
             cell_frame = tk.Frame(table_frame, bg='white')
             cell_frame.grid(row=0, column=col_idx, sticky='nsew', padx=2, pady=2)
 
-            # 修改：工作状态和操作列表头居中对齐
+            # 工作状态和操作列表头居中对齐
             if col_idx in [2, 3]:  # 第3列（工作状态）和第4列（操作）
                 header_anchor = 'center'
             else:
@@ -654,7 +657,7 @@ class HWSimulator:
                                     font=("微软雅黑", 12, "bold"),
                                     bg='white',
                                     fg='#000000',
-                                    anchor=header_anchor)  # 根据列设置对齐方式
+                                    anchor=header_anchor)
             header_label.pack(fill=tk.BOTH, expand=True, padx=5, pady=5, anchor=header_anchor)
 
         # 创建数据行
@@ -691,13 +694,22 @@ class HWSimulator:
                                height=20,
                                bg='white',
                                highlightthickness=0)
-            canvas.place(relx=0.5, rely=0.5, anchor='center')  # 居中对齐
+            canvas.place(relx=0.5, rely=0.5, anchor='center')
             canvas.create_oval(2, 2, 18, 18, fill='green', outline='green')
 
-            # 第4列：操作（启动按钮）- 修改：改为居中对齐
+            # 存储canvas引用，用于后续更新状态
+            if row_idx == 0:
+                self.status_canvas1 = canvas
+            elif row_idx == 1:
+                self.status_canvas2 = canvas
+            else:
+                self.status_canvas3 = canvas
+
+            # 第4列：操作（启动按钮）- 居中对齐
             col4_frame = tk.Frame(table_frame, bg='white')
             col4_frame.grid(row=row_idx + 1, column=3, sticky='nsew', padx=(20, 2), pady=2)
 
+            # 创建启动按钮，绑定click事件
             btn = tk.Button(col4_frame,
                             text="启动",
                             font=("微软雅黑", 12),
@@ -707,8 +719,12 @@ class HWSimulator:
                             relief='solid',
                             width=8,
                             padx=5,
-                            pady=2)
-            btn.place(relx=0.5, rely=0.5, anchor='center')  # 修改：改为居中对齐
+                            pady=2,
+                            command=lambda idx=row_idx, sig_id=row_data[0]: self.start_simulation(idx, sig_id))
+            btn.place(relx=0.5, rely=0.5, anchor='center')
+
+            # 存储按钮引用
+            self.sim_start_buttons.append(btn)
 
         # 配置列权重
         table_frame.columnconfigure(0, weight=1, uniform="col")
@@ -718,15 +734,38 @@ class HWSimulator:
 
     def start_simulation(self, index, signal_id):
         """启动仿真"""
-        print(f"启动仿真: {signal_id}")
+        print(f'启动仿真: 信号ID={signal_id}, 行索引={index}')
+
         # 这里可以添加实际的仿真启动逻辑
         # 暂时只是显示消息
         import tkinter.messagebox as messagebox
         messagebox.showinfo("仿真启动", f"正在启动信号 {signal_id} 的仿真")
 
         # 更新按钮状态
-        if index < len(self.sim_buttons):
-            self.sim_buttons[index].config(text="停止", bg='#d8d8d8')
+        if index < len(self.sim_start_buttons):
+            button = self.sim_start_buttons[index]
+            if button.cget("text") == "启动":
+                button.config(text="停止", bg='#d8d8d8')
+                # 更新状态指示灯为红色
+                self.update_status_light(index, 'red')
+            else:
+                button.config(text="启动", bg='#e8e8e8')
+                # 更新状态指示灯为绿色
+                self.update_status_light(index, 'green')
+
+    def update_status_light(self, index, color):
+        """更新状态指示灯颜色"""
+        canvas = None
+        if index == 0:
+            canvas = getattr(self, 'status_canvas1', None)
+        elif index == 1:
+            canvas = getattr(self, 'status_canvas2', None)
+        elif index == 2:
+            canvas = getattr(self, 'status_canvas3', None)
+
+        if canvas:
+            canvas.delete("all")  # 清除原来的圆形
+            canvas.create_oval(2, 2, 18, 18, fill=color, outline=color)
 
     def show_sim_content(self):
         """显示仿真内容"""
