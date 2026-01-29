@@ -611,7 +611,7 @@ class HWSimulator:
         self.sim_content.pack_forget()
 
     def create_simulation_content(self):
-        """创建仿真内容区域 - 3列严格对齐版本"""
+        """创建仿真内容区域 - 4列版本，左对齐，启动改为操作"""
         # 创建主容器
         main_frame = tk.Frame(self.sim_content, bg='white')
         main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
@@ -624,76 +624,91 @@ class HWSimulator:
                                fg='#000000')
         title_label.pack(anchor='w', pady=(0, 20))
 
-        # 使用简单的网格布局
-        # 创建表格容器
+        # 使用grid布局创建4列表格
         table_frame = tk.Frame(main_frame, bg='white')
         table_frame.pack(fill=tk.X)
 
-        # 定义列宽度
-        col_widths = [20, 10, 20]  # 3列的宽度
+        # 定义4列
+        columns = ["信号ID", "当前值", "工作状态", "操作"]  # 修改：启动改为操作
 
         # 表格数据
         data = [
-            ["信号ID", "当前值", "工作状态"],  # 表头
-            ["01_01_01_PO_01", "1.11", ""],
-            ["02_02_02_RTD_02", "2.22", ""],
-            ["03_03_03_PO_03", "3.33", ""]
+            ["01_01_01_PO_01", "1.11"],
+            ["02_02_02_RTD_02", "2.22"],
+            ["03_03_03_PO_03", "3.33"]
         ]
 
-        # 创建表格
-        for row_idx, row_data in enumerate(data):
-            row_frame = tk.Frame(table_frame, bg='white')
-            row_frame.pack(fill=tk.X, pady=2)
+        # 创建表头
+        for col_idx, header in enumerate(columns):
+            cell_frame = tk.Frame(table_frame, bg='white')
+            cell_frame.grid(row=0, column=col_idx, sticky='nsew', padx=2, pady=2)
 
-            for col_idx, cell_data in enumerate(row_data):
-                # 创建单元格容器
-                cell_frame = tk.Frame(row_frame, bg='white')
-                cell_frame.pack(side=tk.LEFT, fill=tk.X, expand=True)
-
-                if row_idx == 0:  # 表头
-                    label = tk.Label(cell_frame,
-                                     text=cell_data,
-                                     font=("微软雅黑", 12, "bold"),
-                                     bg='white',
-                                     fg='#000000',
-                                     anchor='w',
-                                     width=col_widths[col_idx])
-                    label.pack(anchor='w', padx=5)
-                elif col_idx < 2:  # 前两列：信号ID和当前值
-                    label = tk.Label(cell_frame,
-                                     text=cell_data,
-                                     font=("微软雅黑", 12),
-                                     bg='white',
-                                     fg='#000000',
-                                     anchor='w',
-                                     width=col_widths[col_idx])
-                    label.pack(anchor='w', padx=5)
-                else:  # 第3列：工作状态（包含绿色圆形和启动按钮）
-                    # 创建水平容器
-                    status_container = tk.Frame(cell_frame, bg='white')
-                    status_container.pack(fill=tk.X, anchor='w')
-
-                    # 绿色圆形指示灯
-                    canvas = tk.Canvas(status_container,
-                                       width=20,
-                                       height=20,
-                                       bg='white',
-                                       highlightthickness=0)
-                    canvas.pack(side=tk.LEFT, padx=5)
-                    canvas.create_oval(2, 2, 18, 18, fill='green', outline='green')
-
-                    # 启动按钮
-                    btn = tk.Button(status_container,
-                                    text="启动",
-                                    font=("微软雅黑", 12),
-                                    bg='#e8e8e8',
+            header_label = tk.Label(cell_frame,
+                                    text=header,
+                                    font=("微软雅黑", 12, "bold"),
+                                    bg='white',
                                     fg='#000000',
-                                    bd=1,
-                                    relief='solid',
-                                    width=8,
-                                    padx=5,
-                                    pady=2)
-                    btn.pack(side=tk.LEFT, padx=5)
+                                    anchor='w')  # 修改：改为左对齐
+            header_label.pack(fill=tk.BOTH, expand=True, padx=5, pady=5, anchor='w')
+
+        # 创建数据行
+        for row_idx, row_data in enumerate(data):
+            # 第1列：信号ID
+            col1_frame = tk.Frame(table_frame, bg='white')
+            col1_frame.grid(row=row_idx + 1, column=0, sticky='nsew', padx=2, pady=2)
+
+            tk.Label(col1_frame,
+                     text=row_data[0],
+                     font=("微软雅黑", 12),
+                     bg='white',
+                     fg='#000000',
+                     anchor='w').pack(fill=tk.BOTH, expand=True, padx=5, pady=5, anchor='w')  # 修改：改为左对齐
+
+            # 第2列：当前值
+            col2_frame = tk.Frame(table_frame, bg='white')
+            col2_frame.grid(row=row_idx + 1, column=1, sticky='nsew', padx=2, pady=2)
+
+            tk.Label(col2_frame,
+                     text=row_data[1],
+                     font=("微软雅黑", 12),
+                     bg='white',
+                     fg='#000000',
+                     anchor='w').pack(fill=tk.BOTH, expand=True, padx=5, pady=5, anchor='w')  # 修改：改为左对齐
+
+            # 第3列：工作状态（绿色圆形）
+            col3_frame = tk.Frame(table_frame, bg='white')
+            col3_frame.grid(row=row_idx + 1, column=2, sticky='nsew', padx=(2, 20), pady=2)
+
+            # 创建绿色圆形
+            canvas = tk.Canvas(col3_frame,
+                               width=20,
+                               height=20,
+                               bg='white',
+                               highlightthickness=0)
+            canvas.place(relx=0.0, rely=0.5, anchor='w')  # 修改：改为左对齐
+            canvas.create_oval(2, 2, 18, 18, fill='green', outline='green')
+
+            # 第4列：操作（启动按钮） - 修改：表头改为"操作"
+            col4_frame = tk.Frame(table_frame, bg='white')
+            col4_frame.grid(row=row_idx + 1, column=3, sticky='nsew', padx=(20, 2), pady=2)
+
+            btn = tk.Button(col4_frame,
+                            text="启动",  # 按钮文本保持"启动"
+                            font=("微软雅黑", 12),
+                            bg='#e8e8e8',
+                            fg='#000000',
+                            bd=1,
+                            relief='solid',
+                            width=8,
+                            padx=5,
+                            pady=2)
+            btn.place(relx=0.0, rely=0.5, anchor='w')  # 修改：改为左对齐
+
+        # 配置列权重
+        table_frame.columnconfigure(0, weight=1, uniform="col")
+        table_frame.columnconfigure(1, weight=1, uniform="col")
+        table_frame.columnconfigure(2, weight=1, uniform="col")
+        table_frame.columnconfigure(3, weight=1, uniform="col")
 
     def start_simulation(self, index, signal_id):
         """启动仿真"""
