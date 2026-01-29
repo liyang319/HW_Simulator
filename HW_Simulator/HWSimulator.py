@@ -567,8 +567,20 @@ class HWSimulator:
         # 强制更新界面布局
         self.signal_content.update_idletasks()
 
+    def show_host_content(self):
+        """显示主站管理内容"""
+        print('显示主站管理')
+        self.update_tab_appearance(0)
+        # 隐藏所有内容区域
+        for content_frame in self.content_frames:
+            content_frame.pack_forget()
+        # 显示选中内容区域
+        self.host_content.pack(fill=tk.BOTH, expand=True)
+        # 强制更新界面布局
+        self.host_content.update_idletasks()
+
     def create_simulation_tab(self):
-        """创建仿真标签页"""
+        """创建仿真标签页 - 根据bbb.jpg图片样式"""
         # 创建标签按钮容器
         tab_btn = tk.Frame(self.tab_container, bg='white', height=40)
         self.tab_frames.append(tab_btn)
@@ -589,33 +601,164 @@ class HWSimulator:
         tab_btn.bind('<Button-1>', lambda e: self.show_sim_content())
 
         # 创建内容区域
-        self.sim_content = tk.Frame(self.content_container, bg='#f5f5f5')
+        self.sim_content = tk.Frame(self.content_container, bg='white')
         self.content_frames.append(self.sim_content)
 
-        # 添加内容文本
-        self.sim_content_label = tk.Label(self.sim_content,
-                                          text="仿真内容区域",
-                                          font=("Arial", 12),
-                                          bg='#f5f5f5',
-                                          fg='#333333',
-                                          justify='center')
-        self.sim_content_label.place(relx=0.5, rely=0.5, anchor='center')
+        # 创建仿真内容区域
+        self.create_simulation_content()
 
         # 默认隐藏
         self.sim_content.pack_forget()
 
-    def show_host_content(self):
-        """显示主站管理内容"""
-        print('显示主站管理')
-        self.update_tab_appearance(0)
-        # 隐藏所有内容区域
-        for content_frame in self.content_frames:
-            content_frame.pack_forget()
-        # 显示选中内容区域
-        self.host_content.pack(fill=tk.BOTH, expand=True)
-        # 强制更新界面布局
-        self.host_content.update_idletasks()
+    def create_simulation_content(self):
+        """创建仿真内容区域 - 根据bbb.jpg图片样式"""
+        # 创建主容器
+        main_frame = tk.Frame(self.sim_content, bg='white')
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
 
+        # 表格标题
+        title_label = tk.Label(main_frame,
+                               text="仿真监控",
+                               font=("微软雅黑", 16, "bold"),
+                               bg='white',
+                               fg='#000000')
+        title_label.pack(anchor='w', pady=(0, 20))
+
+        # 创建监控表格容器
+        monitor_container = tk.Frame(main_frame, bg='white')
+        monitor_container.pack(fill=tk.BOTH, expand=True)
+
+        # 定义列配置
+        column_configs = [
+            {"name": "信号ID", "width": 20},
+            {"name": "当前值", "width": 10},
+            {"name": "工作状态", "width": 10},
+            {"name": "", "width": 8}  # 操作列，无标题
+        ]
+
+        # 创建表头
+        header_frame = tk.Frame(monitor_container, bg='white')
+        header_frame.pack(fill=tk.X, pady=(0, 5))
+
+        for config in column_configs:
+            header_cell = tk.Frame(header_frame, bg='white')
+            header_cell.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+            if config["name"]:  # 只显示有名称的列标题
+                header_label = tk.Label(header_cell,
+                                        text=config["name"],
+                                        font=("微软雅黑", 12, "bold"),
+                                        bg='white',
+                                        fg='#000000',
+                                        width=config["width"],
+                                        anchor='w',
+                                        padx=5,
+                                        pady=5)
+                header_label.pack(fill=tk.X)
+
+        # 监控数据
+        monitor_data = [
+            {"signal_id": "01_01_01_PO_01", "current_value": "1.11", "status": "green"},
+            {"signal_id": "02_02_02_RTD_02", "current_value": "2.22", "status": "green"},
+            {"signal_id": "03_03_03_PO_03", "current_value": "3.33", "status": "green"}
+        ]
+
+        # 存储控件引用
+        self.sim_buttons = []
+
+        # 创建数据行
+        for i, data in enumerate(monitor_data):
+            data_frame = tk.Frame(monitor_container, bg='white')
+            data_frame.pack(fill=tk.X, pady=2)
+
+            # 第1列：信号ID
+            id_frame = tk.Frame(data_frame, bg='white')
+            id_frame.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+            id_label = tk.Label(id_frame,
+                                text=data["signal_id"],
+                                font=("微软雅黑", 12),
+                                bg='white',
+                                fg='#000000',
+                                width=20,
+                                anchor='w',
+                                padx=5,
+                                pady=8)
+            id_label.pack(fill=tk.X)
+
+            # 第2列：当前值
+            value_frame = tk.Frame(data_frame, bg='white')
+            value_frame.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+            value_label = tk.Label(value_frame,
+                                   text=data["current_value"],
+                                   font=("微软雅黑", 12),
+                                   bg='white',
+                                   fg='#000000',
+                                   width=10,
+                                   anchor='w',
+                                   padx=5,
+                                   pady=8)
+            value_label.pack(fill=tk.X)
+
+            # 第3列：工作状态（绿色指示灯）
+            status_frame = tk.Frame(data_frame, bg='white')
+            status_frame.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+            # 创建状态指示灯
+            status_canvas = tk.Canvas(status_frame,
+                                      width=20,
+                                      height=20,
+                                      bg='white',
+                                      highlightthickness=0)
+            status_canvas.pack(side=tk.LEFT, padx=5)
+
+            # 绘制绿色圆点
+            status_canvas.create_oval(2, 2, 18, 18, fill='green', outline='green')
+
+            # 状态文本
+            status_label = tk.Label(status_frame,
+                                    text="运行中",
+                                    font=("微软雅黑", 12),
+                                    bg='white',
+                                    fg='#000000',
+                                    anchor='w',
+                                    padx=5)
+            status_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+            # 第4列：启动按钮
+            button_frame = tk.Frame(data_frame, bg='white')
+            button_frame.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+            start_btn = tk.Button(button_frame,
+                                  text="启动",
+                                  font=("微软雅黑", 12),
+                                  bg='#e8e8e8',  # 浅灰色背景
+                                  fg='#000000',  # 黑色文字
+                                  bd=0,  # 无边框
+                                  relief='flat',
+                                  width=8,
+                                  padx=5,
+                                  pady=2,
+                                  highlightthickness=0,
+                                  activebackground='#d8d8d8',
+                                  activeforeground='#000000',
+                                  command=lambda idx=i, sig=data["signal_id"]: self.start_simulation(idx, sig))
+            start_btn.pack(anchor='w', padx=5)
+
+            self.sim_buttons.append(start_btn)
+
+    def start_simulation(self, index, signal_id):
+        """启动仿真"""
+        print(f"启动仿真: {signal_id}")
+        # 这里可以添加实际的仿真启动逻辑
+        # 暂时只是显示消息
+        import tkinter.messagebox as messagebox
+        messagebox.showinfo("仿真启动", f"正在启动信号 {signal_id} 的仿真")
+
+        # 更新按钮状态
+        if index < len(self.sim_buttons):
+            self.sim_buttons[index].config(text="停止", bg='#d8d8d8')
 
     def show_sim_content(self):
         """显示仿真内容"""
