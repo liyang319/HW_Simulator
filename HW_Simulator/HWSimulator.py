@@ -28,7 +28,7 @@ class HWSimulator:
 
         # 创建5个TCPClient实例
         for i in range(5):
-            tcp_client = TCPClient(host=f"192.168.1.{100 + i}", port=9000)
+            tcp_client = TCPClient(host=f"192.168.1.{100 + i}", port=9001)
             self.tcp_clients.append(tcp_client)
 
         # 设置窗口为屏幕大小，并定位到左上角
@@ -847,7 +847,7 @@ class HWSimulator:
                             width=8,
                             padx=5,
                             pady=2,
-                            command=lambda idx=row_idx, sig_id=row_data[0]: self.start_simulation(idx, sig_id))
+                            command=lambda idx=row_idx: self.start_simulation(idx))  # 修改：只传递行索引
             btn.place(relx=0.5, rely=0.5, anchor='center')
 
             # 存储按钮引用
@@ -859,29 +859,54 @@ class HWSimulator:
         table_frame.columnconfigure(2, weight=1, uniform="col")
         table_frame.columnconfigure(3, weight=1, uniform="col")
 
-    def start_simulation(self, index, signal_id):
+    def start_simulation(self, index: int):
         """启动仿真"""
-        print(f'启动仿真: 信号ID={signal_id}, 行索引={index}')
+        print(f'启动仿真: 行索引={index}')
 
-        # 这里可以添加实际的仿真启动逻辑
-        # 暂时只是显示消息
-        import tkinter.messagebox as messagebox
-        messagebox.showinfo("仿真启动", f"正在启动信号 {signal_id} 的仿真")
+        # 检查对应的TCPClient是否已连接
+        if index < 0 or index >= len(self.tcp_clients):
+            messagebox.showerror("错误", f"无效的主机索引: {index}")
+            return
+
+        tcp_client = self.tcp_clients[index]
+
+        if not tcp_client.is_connected or tcp_client.socket is None:
+            messagebox.showerror("连接错误", f"主机{index + 1} 未连接，请先在主机管理页面连接")
+            return
 
         # 更新按钮状态
-        if index < len(self.sim_start_buttons):
-            button = self.sim_start_buttons[index]
-            if button.cget("text") == "启动":
+        button = self.sim_start_buttons[index]
+        if button.cget("text") == "启动":
+            # 准备要发送的JSON数据
+            json_data = '{"cmd":"ModuleStart"}'
+
+            # 发送数据
+            success = tcp_client.send(json_data)
+
+            if success:
+                # 更新界面状态
                 button.config(text="停止", bg='#d8d8d8')
                 # 更新状态指示灯为绿色
-                self.update_status_light(index, 'green')  # 修改：启动后变为绿色
+                self.update_simulation_status_light(index, 'green')
+                messagebox.showinfo("仿真启动", f"向主机{index + 1} 发送启动命令成功")
             else:
+                messagebox.showerror("发送失败", f"向主机{index + 1} 发送启动命令失败")
+        else:
+            # 发送停止命令
+            json_data = '{"cmd":"ModuleStop"}'
+            success = tcp_client.send(json_data)
+
+            if success:
+                # 更新界面状态
                 button.config(text="启动", bg='#e8e8e8')
                 # 更新状态指示灯为红色
-                self.update_status_light(index, 'red')  # 修改：停止后变为红色
+                self.update_simulation_status_light(index, 'red')
+                messagebox.showinfo("仿真停止", f"向主机{index + 1} 发送停止命令成功")
+            else:
+                messagebox.showerror("发送失败", f"向主机{index + 1} 发送停止命令失败")
 
-    def update_status_light(self, index, color):
-        """更新状态指示灯颜色"""
+    def update_simulation_status_light(self, index: int, color: str):
+        """更新仿真状态指示灯颜色"""
         canvas = None
         if index == 0:
             canvas = getattr(self, 'status_canvas1', None)
