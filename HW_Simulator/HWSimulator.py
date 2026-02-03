@@ -430,7 +430,7 @@ class HWSimulator:
             {"name": "从站", "width": 8},
             {"name": "IO卡件", "width": 10},
             {"name": "通道", "width": 8},
-            {"name": "ID", "width": 25}
+            {"name": "信号ID", "width": 25}  # 修改：ID改为信号ID
         ]
 
         # 创建列标题
@@ -515,25 +515,25 @@ class HWSimulator:
                     # 存储下拉框引用
                     node_config['comboboxes'][col_name] = combobox
 
-                elif col_name == "ID":  # ID
-                    # 生成ID值
-                    id_mapping = {
+                elif col_name == "信号ID":  # 修改：处理信号ID列
+                    # 生成信号ID值
+                    signal_id_mapping = {
                         1: "01_01_01_PO_01",
                         2: "02_02_02_RTD_02",
                         3: "03_03_03_PO_03"
                     }
-                    id_value = id_mapping.get(node_num, "")
+                    signal_id_value = signal_id_mapping.get(node_num, "")
 
-                    id_label = tk.Label(cell_frame,
-                                        text=id_value,
-                                        font=("微软雅黑", 11),
-                                        bg='white',
-                                        fg='#333333',
-                                        width=col_width,
-                                        anchor='w',
-                                        padx=5,
-                                        pady=6)
-                    id_label.pack(fill=tk.X)
+                    signal_id_label = tk.Label(cell_frame,
+                                               text=signal_id_value,
+                                               font=("微软雅黑", 11),
+                                               bg='white',
+                                               fg='#333333',
+                                               width=col_width,
+                                               anchor='w',
+                                               padx=5,
+                                               pady=6)
+                    signal_id_label.pack(fill=tk.X)
 
             # 存储节点配置
             self.node_configs.append(node_config)
