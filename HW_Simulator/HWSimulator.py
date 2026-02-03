@@ -664,8 +664,52 @@ class HWSimulator:
                 print(f"  信号ID: {config.signal_id}")
                 print(f"  配置摘要: {config.get_config_summary()}")
 
+        # 10. 同步更新信号管理页面的信号ID
+        self.update_signal_management_signal_ids()
+
+        # 11. 同步更新仿真页面的信号ID
+        self.update_simulation_signal_ids()
+
         import tkinter.messagebox as messagebox
         messagebox.showinfo("保存成功", "信号ID已更新，配置已保存")
+
+    def update_signal_management_signal_ids(self):
+        """更新信号管理页面的信号ID"""
+        if not hasattr(self, 'signal_entries') or not self.signal_entries:
+            print("信号管理页面未初始化，跳过更新")
+            return
+
+        # 遍历信号管理页面的每一行
+        for i, row_entries in enumerate(self.signal_entries):
+            if i < len(self.signal_configs):
+                # 更新信号ID列（第0列）
+                signal_id = self.signal_configs[i].signal_id
+                row_entries[0].delete(0, tk.END)  # 清空原有内容
+                row_entries[0].insert(0, signal_id)  # 插入新的信号ID
+                print(f"信号管理页面 第{i + 1}行 信号ID已更新为: {signal_id}")
+
+    def update_simulation_signal_ids(self):
+        """更新仿真页面的信号ID"""
+        # 检查仿真页面是否已初始化
+        if not hasattr(self, 'sim_content') or not self.sim_content.winfo_exists():
+            print("仿真页面未初始化，跳过更新")
+            return
+
+        # 仿真页面的表格是动态创建的，需要重建或更新
+        # 这里我们重新创建仿真页面的表格
+        self.recreate_simulation_table()
+
+    def recreate_simulation_table(self):
+        """重新创建仿真页面的表格"""
+        if not hasattr(self, 'sim_content') or not self.sim_content.winfo_exists():
+            return
+
+        # 清除仿真页面的所有子部件
+        for widget in self.sim_content.winfo_children():
+            widget.destroy()
+
+        # 重新创建仿真页面内容
+        self.create_simulation_content()
 
     def show_config_content(self):
         """显示构型管理内容"""
@@ -733,7 +777,7 @@ class HWSimulator:
         inner_frame.place(relx=0, rely=0, relwidth=1, relheight=1)  # 填满容器
 
         # 表格列配置
-        columns = ["信号节点", "上限", "下限", "量纲", "信号源", "单位", "校准", "信号值1", "信号值2", "信号值3"]
+        columns = ["信号ID", "上限", "下限", "量纲", "信号源", "单位", "校准", "信号值1", "信号值2", "信号值3"]
         column_count = len(columns)
 
         # 从signal_configs获取表格数据
