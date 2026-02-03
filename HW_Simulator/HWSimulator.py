@@ -28,8 +28,8 @@ class HWSimulator:
         self.tcp_clients: List[TCPClient] = []
 
         # 创建5个TCPClient实例
-        for i in range(5):
-            tcp_client = TCPClient(host=f"192.168.1.{100 + i}", port=9001)
+        for i in range(3):
+            tcp_client = TCPClient(host=f"192.168.3.{196 + i}", port=9001)
             self.tcp_clients.append(tcp_client)
 
         # 新增：初始化SignalConfigInfo列表
@@ -52,6 +52,7 @@ class HWSimulator:
             )
             self.signal_configs.append(config)
 
+        self.signal_configs[0].signal_id = ""
         # 设置窗口为屏幕大小，并定位到左上角
         self.root.geometry(f"{screen_width}x{screen_height}")
 
@@ -150,7 +151,7 @@ class HWSimulator:
         # 创建5个主机配置项
         self.host_entries = []
 
-        for i in range(1, 6):
+        for i in range(1, 4):
             host_frame = tk.Frame(form_frame, bg='#f5f5f5')
             host_frame.pack(fill=tk.X, pady=5)
 
@@ -710,7 +711,7 @@ class HWSimulator:
         self.signal_content.pack_forget()
 
     def create_signal_management_content(self):
-        """创建信号管理内容区域 - 简单铺满版本"""
+        """创建信号管理内容区域 - 显示signal_configs数据"""
         # 创建主容器
         main_frame = tk.Frame(self.signal_content, bg='white')
         main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
@@ -735,12 +736,22 @@ class HWSimulator:
         columns = ["信号节点", "上限", "下限", "量纲", "信号源", "单位", "校准", "信号值1", "信号值2", "信号值3"]
         column_count = len(columns)
 
-        # 表格数据
-        table_data = [
-            ["01_01_01_PO_01", "", "", "", "", "", "", "", "", ""],
-            ["02_02_02_RTD_02", "", "", "", "", "", "", "", "", ""],
-            ["03_03_03_PO_03", "", "", "", "", "", "", "", "", ""]
-        ]
+        # 从signal_configs获取表格数据
+        table_data = []
+        for config in self.signal_configs:
+            row_data = [
+                config.signal_id,  # 信号节点
+                str(config.signal_value_upper),  # 上限
+                str(config.signal_value_lower),  # 下限
+                config.dimension,  # 量纲
+                config.signal_source,  # 信号源
+                config.unit,  # 单位
+                str(config.calibration_value),  # 校准
+                str(config.signal_value1),  # 信号值1
+                str(config.signal_value2),  # 信号值2
+                str(config.signal_value3)  # 信号值3
+            ]
+            table_data.append(row_data)
 
         # 存储所有Entry控件
         self.signal_entries = []
@@ -821,6 +832,123 @@ class HWSimulator:
                 row_entries.append(cell_entry)
 
             self.signal_entries.append(row_entries)
+
+        # 在表格下面添加操作按钮
+        button_frame = tk.Frame(main_frame, bg='white')
+        button_frame.pack(fill=tk.X, pady=(20, 0))  # 上方间距20像素
+
+        # 创建按钮容器右对齐
+        buttons_container = tk.Frame(button_frame, bg='white')
+        buttons_container.pack(side=tk.RIGHT)
+
+        # 定义按钮列表
+        button_names = ["导入", "导出", "保存"]
+
+        for i, btn_text in enumerate(button_names):
+            # 创建按钮
+            btn = tk.Button(buttons_container,
+                            text=btn_text,
+                            font=("微软雅黑", 12),
+                            bg='#e8e8e8',  # 浅灰色背景
+                            fg='#000000',  # 黑色文字
+                            bd=1,  # 边框
+                            relief='solid',  # 浮雕效果
+                            width=8,
+                            padx=10,
+                            pady=2,
+                            highlightthickness=0)
+
+            # 绑定点击事件
+            if btn_text == "导入":
+                btn.config(command=self.import_signal_config)
+            elif btn_text == "导出":
+                btn.config(command=self.export_signal_config)
+            elif btn_text == "保存":
+                btn.config(command=self.save_signal_config)
+
+            # 水平排列，按钮之间留出间距
+            btn.pack(side=tk.LEFT, padx=(0, 10) if i < len(button_names) - 1 else 0)
+
+    def import_signal_config(self):
+        """导入信号配置"""
+        print("导入信号配置")
+        import tkinter.messagebox as messagebox
+        messagebox.showinfo("导入信号配置", "导入信号配置功能")
+
+    def export_signal_config(self):
+        """导出信号配置"""
+        print("导出信号配置")
+        import tkinter.messagebox as messagebox
+        messagebox.showinfo("导出信号配置", "导出信号配置功能")
+
+    def save_signal_config(self):
+        """保存信号配置 - 从界面更新到signal_configs"""
+        print("保存信号配置")
+
+        # 验证表格行数与signal_configs数量一致
+        if len(self.signal_entries) != len(self.signal_configs):
+            import tkinter.messagebox as messagebox
+            messagebox.showerror("保存错误",
+                                 f"数据不匹配: 表格行数={len(self.signal_entries)}, 配置数量={len(self.signal_configs)}")
+            return
+
+        try:
+            for row_idx, row_entries in enumerate(self.signal_entries):
+                if row_idx >= len(self.signal_configs):
+                    continue
+
+                config = self.signal_configs[row_idx]
+
+                # 从Entry控件获取值并更新SignalConfigInfo
+                # 第0列: 信号节点 (signal_id) - 只读，不更新
+                # 第1列: 上限 (signal_value_upper)
+                config.signal_value_upper = float(row_entries[1].get())
+
+                # 第2列: 下限 (signal_value_lower)
+                config.signal_value_lower = float(row_entries[2].get())
+
+                # 第3列: 量纲 (dimension)
+                config.dimension = row_entries[3].get()
+
+                # 第4列: 信号源 (signal_source)
+                config.signal_source = row_entries[4].get()
+
+                # 第5列: 单位 (unit)
+                config.unit = row_entries[5].get()
+
+                # 第6列: 校准 (calibration_value)
+                config.calibration_value = float(row_entries[6].get())
+
+                # 第7列: 信号值1 (signal_value1)
+                config.signal_value1 = float(row_entries[7].get())
+
+                # 第8列: 信号值2 (signal_value2)
+                config.signal_value2 = float(row_entries[8].get())
+
+                # 第9列: 信号值3 (signal_value3)
+                config.signal_value3 = float(row_entries[9].get())
+
+                print(f"信号配置 {row_idx + 1} 已保存:")
+                print(f"  信号ID: {config.signal_id}")
+                print(f"  上限: {config.signal_value_upper}")
+                print(f"  下限: {config.signal_value_lower}")
+                print(f"  量纲: {config.dimension}")
+                print(f"  信号源: {config.signal_source}")
+                print(f"  单位: {config.unit}")
+                print(f"  校准: {config.calibration_value}")
+                print(f"  信号值1: {config.signal_value1}")
+                print(f"  信号值2: {config.signal_value2}")
+                print(f"  信号值3: {config.signal_value3}")
+
+            import tkinter.messagebox as messagebox
+            messagebox.showinfo("保存成功", "信号配置已保存")
+
+        except ValueError as e:
+            import tkinter.messagebox as messagebox
+            messagebox.showerror("保存错误", f"数值格式错误: {e}")
+        except Exception as e:
+            import tkinter.messagebox as messagebox
+            messagebox.showerror("保存错误", f"保存过程中发生错误: {e}")
 
     def show_signal_content(self):
         """显示信号管理内容"""
