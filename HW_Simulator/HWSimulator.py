@@ -655,14 +655,15 @@ class HWSimulator:
             # 9. 更新对应的SignalConfigInfo
             if i < len(self.signal_configs):
                 config = self.signal_configs[i]
+                old_signal_id = config.signal_id  # 保存旧的信号ID
                 config.signal_id = signal_id
                 if tcp_client:
                     config.node_ip = tcp_client.host
 
                 print(f"节点{i + 1} 信号配置已更新:")
+                print(f"  旧信号ID: {old_signal_id}")
+                print(f"  新信号ID: {config.signal_id}")
                 print(f"  IP: {config.node_ip}")
-                print(f"  信号ID: {config.signal_id}")
-                print(f"  配置摘要: {config.get_config_summary()}")
 
         # 10. 同步更新信号管理页面的信号ID
         self.update_signal_management_signal_ids()
@@ -675,34 +676,62 @@ class HWSimulator:
 
     def update_signal_management_signal_ids(self):
         """更新信号管理页面的信号ID"""
-        if not hasattr(self, 'signal_entries') or not self.signal_entries:
-            print("信号管理页面未初始化，跳过更新")
+        # 检查信号管理页面是否已创建
+        if not hasattr(self, 'signal_entries'):
+            print("信号管理页面未创建，跳过更新")
             return
+
+        # 检查是否有signal_entries数据
+        if not self.signal_entries:
+            print("signal_entries为空，跳过更新")
+            return
+
+        print(f"开始更新信号管理页面，行数: {len(self.signal_entries)}")
 
         # 遍历信号管理页面的每一行
         for i, row_entries in enumerate(self.signal_entries):
             if i < len(self.signal_configs):
                 # 更新信号ID列（第0列）
                 signal_id = self.signal_configs[i].signal_id
-                row_entries[0].delete(0, tk.END)  # 清空原有内容
-                row_entries[0].insert(0, signal_id)  # 插入新的信号ID
-                print(f"信号管理页面 第{i + 1}行 信号ID已更新为: {signal_id}")
+
+                # 检查Entry控件是否存在
+                if i < len(self.signal_entries) and len(row_entries) > 0:
+                    try:
+                        # 删除原有内容
+                        row_entries[0].delete(0, tk.END)
+                        # 插入新的信号ID
+                        row_entries[0].insert(0, signal_id)
+                        print(f"信号管理页面 第{i + 1}行 信号ID已更新为: {signal_id}")
+                    except Exception as e:
+                        print(f"更新信号管理页面第{i + 1}行时出错: {e}")
+                else:
+                    print(f"信号管理页面第{i + 1}行Entry控件不存在")
 
     def update_simulation_signal_ids(self):
         """更新仿真页面的信号ID"""
-        # 检查仿真页面是否已初始化
-        if not hasattr(self, 'sim_content') or not self.sim_content.winfo_exists():
-            print("仿真页面未初始化，跳过更新")
+        # 检查仿真页面是否已创建
+        if not hasattr(self, 'sim_content'):
+            print("仿真页面未创建，跳过更新")
             return
 
-        # 仿真页面的表格是动态创建的，需要重建或更新
-        # 这里我们重新创建仿真页面的表格
-        self.recreate_simulation_table()
-
-    def recreate_simulation_table(self):
-        """重新创建仿真页面的表格"""
-        if not hasattr(self, 'sim_content') or not self.sim_content.winfo_exists():
+        # 检查仿真页面是否可见
+        if not self.sim_content.winfo_ismapped():
+            print("仿真页面未显示，跳过更新")
             return
+
+        print("开始更新仿真页面")
+
+        # 重新创建仿真页面
+        self.refresh_simulation_content()
+
+    def refresh_simulation_content(self):
+        """刷新仿真页面内容"""
+        # 检查仿真页面是否已创建
+        if not hasattr(self, 'sim_content'):
+            return
+
+        # 保存当前是否显示仿真页面
+        is_sim_visible = self.sim_content.winfo_ismapped()
 
         # 清除仿真页面的所有子部件
         for widget in self.sim_content.winfo_children():
@@ -710,6 +739,16 @@ class HWSimulator:
 
         # 重新创建仿真页面内容
         self.create_simulation_content()
+
+        # 如果之前是显示的，重新显示
+        if is_sim_visible:
+            # 隐藏所有内容区域
+            for content_frame in self.content_frames:
+                content_frame.pack_forget()
+            # 显示仿真内容区域
+            self.sim_content.pack(fill=tk.BOTH, expand=True)
+
+        print("仿真页面已刷新")
 
     def show_config_content(self):
         """显示构型管理内容"""
@@ -1038,7 +1077,7 @@ class HWSimulator:
         self.sim_content.pack_forget()
 
     def create_simulation_content(self):
-        """创建仿真内容区域 - 工作状态和操作列居中对齐"""
+        """创建仿真内容区域 - 从signal_configs读取信号ID"""
         # 创建主容器
         main_frame = tk.Frame(self.sim_content, bg='white')
         main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
@@ -1058,12 +1097,21 @@ class HWSimulator:
         # 定义4列
         columns = ["信号ID", "当前值", "工作状态", "操作"]
 
-        # 表格数据
-        data = [
-            ["01_01_01_PO_01", "1.11"],
-            ["02_02_02_RTD_02", "2.22"],
-            ["03_03_03_PO_03", "3.33"]
-        ]
+        # 从signal_configs获取表格数据，但最多显示3行
+        table_data = []
+        for i, config in enumerate(self.signal_configs[:3]):  # 只取前3个
+            if config.signal_id:  # 如果有信号ID
+                # 设置默认当前值
+                current_value = f"{i + 1}.{i + 1}{i + 1}"  # 1.11, 2.22, 3.33
+                table_data.append([config.signal_id, current_value])
+            else:
+                # 如果signal_id为空，使用默认值
+                default_ids = ["01_01_01_PO_01", "02_02_02_RTD_02", "03_03_03_PO_03"]
+                current_value = f"{i + 1}.{i + 1}{i + 1}"
+                if i < len(default_ids):
+                    table_data.append([default_ids[i], current_value])
+
+        print(f"仿真页面数据: {table_data}")
 
         # 存储启动按钮，用于状态更新
         self.sim_start_buttons = []
@@ -1088,7 +1136,7 @@ class HWSimulator:
             header_label.pack(fill=tk.BOTH, expand=True, padx=5, pady=5, anchor=header_anchor)
 
         # 创建数据行
-        for row_idx, row_data in enumerate(data):
+        for row_idx, row_data in enumerate(table_data):
             # 第1列：信号ID
             col1_frame = tk.Frame(table_frame, bg='white')
             col1_frame.grid(row=row_idx + 1, column=0, sticky='nsew', padx=2, pady=2)
@@ -1129,7 +1177,7 @@ class HWSimulator:
                 self.status_canvas1 = canvas
             elif row_idx == 1:
                 self.status_canvas2 = canvas
-            else:
+            elif row_idx == 2:
                 self.status_canvas3 = canvas
 
             # 第4列：操作（启动按钮）- 居中对齐
@@ -1147,7 +1195,7 @@ class HWSimulator:
                             width=8,
                             padx=5,
                             pady=2,
-                            command=lambda idx=row_idx: self.start_simulation(idx))  # 修改：只传递行索引
+                            command=lambda idx=row_idx: self.start_simulation(idx))
             btn.place(relx=0.5, rely=0.5, anchor='center')
 
             # 存储按钮引用
