@@ -455,6 +455,7 @@ class HWSimulator:
 
         # 创建3个节点的配置行
         self.node_configs = []  # 存储节点配置
+        self.signal_id_labels = []  # 存储信号ID标签引用
 
         for node_num in range(1, 4):  # 创建3个节点
             node_frame = tk.Frame(config_container, bg='white')
@@ -535,11 +536,13 @@ class HWSimulator:
                                                pady=6)
                     signal_id_label.pack(fill=tk.X)
 
+                    # 存储标签引用，用于后续更新
+                    self.signal_id_labels.append(signal_id_label)
+
             # 存储节点配置
             self.node_configs.append(node_config)
 
-        # 第三部分：操作按钮 - 新增代码
-        # 创建按钮容器，在表格下面留出一定距离
+        # 第三部分：操作按钮
         button_frame = tk.Frame(main_frame, bg='white')
         button_frame.pack(fill=tk.X, pady=(20, 0))  # 上方间距20像素
 
@@ -588,10 +591,47 @@ class HWSimulator:
         messagebox.showinfo("导出", "导出配置功能")
 
     def save_config(self):
-        """保存配置"""
+        """保存配置 - 生成并更新信号ID"""
         print("保存配置")
-        import tkinter.messagebox as messagebox
-        messagebox.showinfo("保存", "保存配置功能")
+
+        for i, node_config in enumerate(self.node_configs):
+            # 获取当前行的下拉框值
+            comboboxes = node_config['comboboxes']
+
+            # 1. 获取机柜编号
+            cabinet = comboboxes['机柜'].get()
+            # 提取数字，确保两位格式
+            cabinet_num = cabinet.replace("机柜", "")
+            cabinet_code = cabinet_num.zfill(2)  # 01, 02, 03
+
+            # 2. 获取主站编号
+            master = comboboxes['主站'].get()
+            master_num = master.replace("主站", "")
+            master_code = master_num.zfill(2)  # 01, 02, 03
+
+            # 3. 获取从站编号
+            slave = comboboxes['从站'].get()
+            slave_num = slave.replace("从站", "")
+            slave_code = slave_num.zfill(2)  # 01, 02, 03
+
+            # 4. 获取IO卡件类型
+            io_card = comboboxes['IO卡件'].get()  # PO, RTD, TC
+
+            # 5. 获取通道编号
+            channel = comboboxes['通道'].get()
+            channel_code = channel.zfill(2)  # 01, 02, 03, 04, 05, 06
+
+            # 6. 生成信号ID
+            signal_id = f"{cabinet_code}_{master_code}_{slave_code}_{io_card}_{channel_code}"
+
+            # 7. 更新信号ID标签
+            if i < len(self.signal_id_labels):
+                self.signal_id_labels[i].config(text=signal_id)
+
+            print(f"节点{i + 1} 信号ID: {signal_id}")
+
+        # import tkinter.messagebox as messagebox
+        # messagebox.showinfo("保存成功", "信号ID已更新")
 
     def show_config_content(self):
         """显示构型管理内容"""
