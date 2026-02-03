@@ -538,6 +538,61 @@ class HWSimulator:
             # 存储节点配置
             self.node_configs.append(node_config)
 
+        # 第三部分：操作按钮 - 新增代码
+        # 创建按钮容器，在表格下面留出一定距离
+        button_frame = tk.Frame(main_frame, bg='white')
+        button_frame.pack(fill=tk.X, pady=(20, 0))  # 上方间距20像素
+
+        # 创建按钮容器右对齐
+        buttons_container = tk.Frame(button_frame, bg='white')
+        buttons_container.pack(side=tk.RIGHT)
+
+        # 定义按钮列表
+        button_names = ["导入", "导出", "保存"]
+
+        for i, btn_text in enumerate(button_names):
+            # 创建按钮
+            btn = tk.Button(buttons_container,
+                            text=btn_text,
+                            font=("微软雅黑", 12),
+                            bg='#e8e8e8',  # 浅灰色背景
+                            fg='#000000',  # 黑色文字
+                            bd=1,  # 边框
+                            relief='solid',  # 浮雕效果
+                            width=8,
+                            padx=10,
+                            pady=2,
+                            highlightthickness=0)
+
+            # 绑定点击事件
+            if btn_text == "导入":
+                btn.config(command=self.import_config)
+            elif btn_text == "导出":
+                btn.config(command=self.export_config)
+            elif btn_text == "保存":
+                btn.config(command=self.save_config)
+
+            # 水平排列，按钮之间留出间距
+            btn.pack(side=tk.LEFT, padx=(0, 10) if i < len(button_names) - 1 else 0)
+
+    def import_config(self):
+        """导入配置"""
+        print("导入配置")
+        import tkinter.messagebox as messagebox
+        messagebox.showinfo("导入", "导入配置功能")
+
+    def export_config(self):
+        """导出配置"""
+        print("导出配置")
+        import tkinter.messagebox as messagebox
+        messagebox.showinfo("导出", "导出配置功能")
+
+    def save_config(self):
+        """保存配置"""
+        print("保存配置")
+        import tkinter.messagebox as messagebox
+        messagebox.showinfo("保存", "保存配置功能")
+
     def show_config_content(self):
         """显示构型管理内容"""
         print('显示构型管理')
