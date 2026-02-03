@@ -11,6 +11,7 @@ from TCPClient import TCPClient
 from typing import List, Dict
 import time
 from SignalConfigInfo import SignalConfigInfo
+import json
 
 
 class HWSimulator:
@@ -1234,14 +1235,36 @@ class HWSimulator:
             messagebox.showerror("连接错误", f"主机{index + 1} 未连接，请先在主机管理页面连接")
             return
 
+        # 检查对应的signal_config是否存在
+        if index >= len(self.signal_configs):
+            messagebox.showerror("错误", f"未找到对应的信号配置: 索引{index}")
+            return
+
+        # 获取信号配置
+        signal_config = self.signal_configs[index]
+
+        # 检查信号ID是否有效
+        if not signal_config.signal_id:
+            messagebox.showerror("错误", f"信号ID为空，请在构型管理页面配置信号")
+            return
+
         # 更新按钮状态
         button = self.sim_start_buttons[index]
         if button.cget("text") == "启动":
             # 准备要发送的JSON数据
-            json_data = '{"cmd":"ModuleStart"}'
+            json_data = {
+                "signal_id": signal_config.signal_id,
+                "signal_source": signal_config.signal_source if signal_config.signal_source else "unknown",
+                "signal_value1": signal_config.signal_value1
+            }
+
+            # 将字典转换为JSON字符串
+            json_str = json.dumps(json_data, ensure_ascii=False)
+
+            print(f"发送JSON数据: {json_str}")
 
             # 发送数据
-            success = tcp_client.send(json_data)
+            success = tcp_client.send(json_str)
 
             if success:
                 # 更新界面状态
@@ -1253,8 +1276,18 @@ class HWSimulator:
                 messagebox.showerror("发送失败", f"向主机{index + 1} 发送启动命令失败")
         else:
             # 发送停止命令
-            json_data = '{"cmd":"ModuleStop"}'
-            success = tcp_client.send(json_data)
+            json_data = {
+                "signal_id": signal_config.signal_id,
+                "signal_source": signal_config.signal_source if signal_config.signal_source else "unknown",
+                "signal_value1": 0.0  # 停止时信号值为0
+            }
+
+            # 将字典转换为JSON字符串
+            json_str = json.dumps(json_data, ensure_ascii=False)
+
+            print(f"发送停止JSON数据: {json_str}")
+
+            success = tcp_client.send(json_str)
 
             if success:
                 # 更新界面状态
