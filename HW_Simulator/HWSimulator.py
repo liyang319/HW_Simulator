@@ -5,6 +5,11 @@ HWSimulator.py - 硬件仿真器主界面
 
 import tkinter as tk
 from tkinter import ttk
+import threading
+from tkinter import ttk, filedialog, messagebox
+from TCPClient import TCPClient
+from typing import List, Dict
+import time
 
 
 class HWSimulator:
@@ -17,6 +22,14 @@ class HWSimulator:
         screen_width = self.root.winfo_screenwidth()
         screen_height = self.root.winfo_screenheight()
         print(f"{screen_width}x{screen_height}")
+
+        # 初始化TCPClient列表
+        self.tcp_clients: List[TCPClient] = []
+
+        # 创建5个TCPClient实例
+        for i in range(5):
+            tcp_client = TCPClient(host=f"192.168.1.{100 + i}", port=9000)
+            self.tcp_clients.append(tcp_client)
 
         # 设置窗口为屏幕大小，并定位到左上角
         self.root.geometry(f"{screen_width}x{screen_height}")
@@ -50,6 +63,8 @@ class HWSimulator:
 
         # 设置标签页平均分布
         self.setup_tab_layout()
+
+
 
     def setup_tab_layout(self):
         """设置标签页平均分布布局"""
@@ -128,8 +143,9 @@ class HWSimulator:
                                   anchor='w')
             host_label.pack(side=tk.LEFT, padx=(0, 20))
 
-            # IP地址输入框 - 使用ttk.Combobox实现下拉箭头
-            ip_var = tk.StringVar(value=f"192.168.1.{100 + i - 1}")
+            # 从TCPClient获取IP地址
+            tcp_client = self.tcp_clients[i - 1]
+            ip_var = tk.StringVar(value=tcp_client.host)
 
             # 创建编辑框框架，用于添加边框
             ip_frame = tk.Frame(host_frame, bg='white', bd=1, relief='solid')
@@ -145,19 +161,22 @@ class HWSimulator:
                                 highlightthickness=0)
             ip_entry.pack(padx=5, pady=5)
 
-            # 连接按钮 - 纯灰色，无边框
+            # 连接按钮 - 初始状态
+            button_text = "连接" if not tcp_client.is_connected else "断开"
+            button_bg = '#e0e0e0' if not tcp_client.is_connected else '#d0d0d0'
+
             connect_btn = tk.Button(host_frame,
-                                    text="连接",
+                                    text=button_text,
                                     font=("微软雅黑", 12),
-                                    bg='#e0e0e0',  # 浅灰色背景
-                                    fg='#333333',  # 黑色文字
-                                    bd=0,  # 无边框
-                                    relief='flat',  # 无浮雕
+                                    bg=button_bg,  # 根据连接状态设置背景色
+                                    fg='#333333',
+                                    bd=0,
+                                    relief='flat',
                                     width=8,
                                     padx=5,
                                     pady=2,
-                                    highlightthickness=0,  # 移除高亮边框
-                                    activebackground='#d0d0d0',  # 点击时略深的灰色
+                                    highlightthickness=0,
+                                    activebackground='#d0d0d0',
                                     activeforeground='#333333')
             connect_btn.pack(side=tk.LEFT, padx=(0, 10))
 
@@ -169,19 +188,127 @@ class HWSimulator:
                                       highlightthickness=0)
             status_canvas.pack(side=tk.LEFT)
 
-            # 绘制红色圆点
-            status_canvas.create_oval(2, 2, 18, 18, fill='red', outline='red')
+            # 根据连接状态设置指示灯颜色
+            if tcp_client.is_connected:
+                status_canvas.create_oval(2, 2, 18, 18, fill='green', outline='green')
+            else:
+                status_canvas.create_oval(2, 2, 18, 18, fill='red', outline='red')
 
             # 存储输入框变量
             self.host_entries.append({
                 'label': f"主机{i}",
                 'ip_var': ip_var,
                 'button': connect_btn,
-                'status': status_canvas
+                'status_canvas': status_canvas,
+                'tcp_client': tcp_client
             })
 
             # 绑定按钮事件
             connect_btn.config(command=lambda idx=i - 1: self.connect_host(idx))
+
+    def connect_host(self, index: int):
+        """连接或断开主机"""
+        tcp_client = self.tcp_clients[index]
+        entry = self.host_entries[index]
+
+        if not tcp_client.is_connected:
+            # 连接操作
+            ip_address = entry['ip_var'].get()  # 从输入框获取当前IP
+            host_label = entry['label']
+
+            # 显示连接中消息
+            messagebox.showinfo("连接", f"正在连接 {host_label} ({ip_address})")
+
+            # 更新按钮状态为连接中
+            entry['button'].config(text="连接中...", bg='#c0c0c0', state='disabled')
+            entry['status_canvas'].delete("all")
+            entry['status_canvas'].create_oval(2, 2, 18, 18, fill='yellow', outline='yellow')
+
+            # 启动连接线程
+            def connect_thread():
+                # 只有在点击连接时才更新TCPClient的host
+                tcp_client.host = ip_address
+                print(f"主机{index + 1} 使用IP: {ip_address}")
+
+                # 尝试连接
+                success = tcp_client.connect()
+
+                # 在UI线程中更新界面
+                self.root.after(0, lambda: self.update_host_status(index, success, ip_address))
+
+                if success:
+                    # 启动数据接收线程
+                    recv_thread = threading.Thread(target=self.data_receive_loop,
+                                                   args=(index, tcp_client),
+                                                   daemon=True)
+                    recv_thread.start()
+
+            # 启动连接线程
+            thread = threading.Thread(target=connect_thread, daemon=True)
+            thread.start()
+        else:
+            # 断开操作
+            tcp_client.disconnect()
+            self.update_host_status(index, False, None)
+
+    def update_host_status(self, index: int, connected: bool, ip_address: str = None):
+        """更新主机连接状态"""
+        entry = self.host_entries[index]
+        tcp_client = self.tcp_clients[index]
+
+        if connected and ip_address:
+            # 连接成功
+            entry['button'].config(text="断开", bg='#d0d0d0', state='normal')
+            entry['status_canvas'].delete("all")
+            entry['status_canvas'].create_oval(2, 2, 18, 18, fill='green', outline='green')
+            messagebox.showinfo("连接成功", f"{entry['label']} ({ip_address}) 连接成功")
+        else:
+            # 断开连接
+            entry['button'].config(text="连接", bg='#e0e0e0', state='normal')
+            entry['status_canvas'].delete("all")
+            entry['status_canvas'].create_oval(2, 2, 18, 18, fill='red', outline='red')
+
+    def data_receive_loop(self, index: int, tcp_client: TCPClient):
+        """数据接收循环"""
+        entry = self.host_entries[index]
+        host_name = entry['label']
+
+        while tcp_client.is_connected and tcp_client.socket is not None:
+            try:
+                # 非阻塞接收数据
+                data = tcp_client.receive(timeout=0.1)  # 100ms超时
+
+                if data is not None:
+                    # 处理接收到的数据
+                    data_str = data.decode('utf-8', errors='ignore')
+                    print(f"{host_name} 接收到数据: {data_str}")
+
+                    # 这里可以添加数据处理逻辑
+                    # 例如：发送响应、更新界面等
+
+                # 短暂的休眠，避免CPU占用过高
+                time.sleep(0.01)
+
+            except Exception as e:
+                print(f"{host_name} 数据接收异常: {e}")
+
+                # 检查连接状态
+                if not tcp_client.is_connected or tcp_client.socket is None:
+                    break
+
+                # 尝试接收一次确认连接是否真的断开
+                try:
+                    test_data = tcp_client.receive(timeout=0.1)
+                    if test_data is None:
+                        # 连接可能已断开
+                        self.root.after(0, lambda idx=index: self.update_host_status(idx, False))
+                        break
+                except:
+                    # 连接已断开
+                    self.root.after(0, lambda idx=index: self.update_host_status(idx, False))
+                    break
+
+        print(f"{host_name} 数据接收循环结束")
 
     def show_host_content(self):
         """显示主站管理内容"""
