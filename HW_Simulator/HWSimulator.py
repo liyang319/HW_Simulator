@@ -668,10 +668,10 @@ class HWSimulator:
         # 10. 同步更新信号管理页面的信号ID
         self.update_signal_management_signal_ids()
 
-        # 11. 同步更新仿真页面的信号ID
-        self.update_simulation_signal_ids()
-
-        import tkinter.messagebox as messagebox
+        # 11. 同步更新仿真页面的数据
+        # 不需要立即更新界面，因为数据已经保存在signal_configs中
+        # 当用户切换到仿真页面时，会从signal_configs读取最新的数据
+        print("仿真页面数据已保存在signal_configs中，将在页面显示时自动更新")
         messagebox.showinfo("保存成功", "信号ID已更新，配置已保存")
 
     def update_signal_management_signal_ids(self):
@@ -1077,7 +1077,7 @@ class HWSimulator:
         self.sim_content.pack_forget()
 
     def create_simulation_content(self):
-        """创建仿真内容区域 - 从signal_configs读取信号ID"""
+        """创建仿真内容区域 - 始终从signal_configs读取最新的信号ID"""
         # 创建主容器
         main_frame = tk.Frame(self.sim_content, bg='white')
         main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
@@ -1096,22 +1096,34 @@ class HWSimulator:
 
         # 定义4列
         columns = ["信号ID", "当前值", "工作状态", "操作"]
+        print(f'信号ID={self.signal_configs[0].signal_id}')
 
         # 从signal_configs获取表格数据，但最多显示3行
         table_data = []
         for i, config in enumerate(self.signal_configs[:3]):  # 只取前3个
-            if config.signal_id:  # 如果有信号ID
-                # 设置默认当前值
-                current_value = f"{i + 1}.{i + 1}{i + 1}"  # 1.11, 2.22, 3.33
-                table_data.append([config.signal_id, current_value])
-            else:
-                # 如果signal_id为空，使用默认值
-                default_ids = ["01_01_01_PO_01", "02_02_02_RTD_02", "03_03_03_PO_03"]
-                current_value = f"{i + 1}.{i + 1}{i + 1}"
-                if i < len(default_ids):
-                    table_data.append([default_ids[i], current_value])
+            signal_id = config.signal_id
+            if not signal_id:  # 如果signal_id为空，使用构型管理页面的默认值
+                # 尝试从构型管理页面的标签获取
+                if hasattr(self, 'signal_id_labels') and i < len(self.signal_id_labels):
+                    try:
+                        signal_id = self.signal_id_labels[i].cget("text")
+                        print(f"从构型管理页面标签获取信号ID: {signal_id}")
+                    except:
+                        pass
 
-        print(f"仿真页面数据: {table_data}")
+                # 如果仍然为空，使用默认值
+                if not signal_id:
+                    default_ids = ["01_01_01_PO_01", "02_02_02_RTD_02", "03_03_03_PO_03"]
+                    if i < len(default_ids):
+                        signal_id = default_ids[i]
+
+            # 设置默认当前值
+            current_value = f"{i + 1}.{i + 1}{i + 1}"  # 1.11, 2.22, 3.33
+            table_data.append([signal_id, current_value])
+
+        print(f"仿真页面创建，从signal_configs读取数据:")
+        for i, config in enumerate(self.signal_configs[:3]):
+            print(f"  节点{i + 1}: signal_id={config.signal_id}")
 
         # 存储启动按钮，用于状态更新
         self.sim_start_buttons = []
@@ -1271,13 +1283,22 @@ class HWSimulator:
         """显示仿真内容"""
         print('显示仿真')
         self.update_tab_appearance(3)
+
         # 隐藏所有内容区域
         for content_frame in self.content_frames:
             content_frame.pack_forget()
+
+        # 清除仿真页面内容
+        for widget in self.sim_content.winfo_children():
+            widget.destroy()
+
+        # 重新创建仿真内容
+        self.create_simulation_content()
+
         # 显示选中内容区域
         self.sim_content.pack(fill=tk.BOTH, expand=True)
-        # 强制更新界面布局
-        self.sim_content.update_idletasks()
+
+        print("仿真页面已重新创建，显示最新的信号ID")
 
     def update_tab_appearance(self, active_index):
         """更新标签页外观"""
