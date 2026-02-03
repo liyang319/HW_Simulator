@@ -53,6 +53,9 @@ class HWSimulator:
             )
             self.signal_configs.append(config)
 
+        # 存储仿真状态
+        self.simulation_states = [False, False, False]  # 默认都为停止状态
+
         self.signal_configs[0].signal_id = ""
         # 设置窗口为屏幕大小，并定位到左上角
         self.root.geometry(f"{screen_width}x{screen_height}")
@@ -1097,7 +1100,6 @@ class HWSimulator:
 
         # 定义4列
         columns = ["信号ID", "当前值", "工作状态", "操作"]
-        print(f'信号ID={self.signal_configs[0].signal_id}')
 
         # 从signal_configs获取表格数据，但最多显示3行
         table_data = []
@@ -1121,10 +1123,6 @@ class HWSimulator:
             # 设置默认当前值
             current_value = f"{i + 1}.{i + 1}{i + 1}"  # 1.11, 2.22, 3.33
             table_data.append([signal_id, current_value])
-
-        print(f"仿真页面创建，从signal_configs读取数据:")
-        for i, config in enumerate(self.signal_configs[:3]):
-            print(f"  节点{i + 1}: signal_id={config.signal_id}")
 
         # 存储启动按钮，用于状态更新
         self.sim_start_buttons = []
@@ -1176,14 +1174,19 @@ class HWSimulator:
             col3_frame = tk.Frame(table_frame, bg='white')
             col3_frame.grid(row=row_idx + 1, column=2, sticky='nsew', padx=(2, 20), pady=2)
 
-            # 创建圆形 - 初始为红色，居中对齐
+            # 创建圆形
             canvas = tk.Canvas(col3_frame,
                                width=20,
                                height=20,
                                bg='white',
                                highlightthickness=0)
             canvas.place(relx=0.5, rely=0.5, anchor='center')
-            canvas.create_oval(2, 2, 18, 18, fill='red', outline='red')  # 修改：初始为红色
+
+            # 根据保存的状态设置指示灯颜色
+            if row_idx < len(self.simulation_states) and self.simulation_states[row_idx]:
+                canvas.create_oval(2, 2, 18, 18, fill='green', outline='green')
+            else:
+                canvas.create_oval(2, 2, 18, 18, fill='red', outline='red')
 
             # 存储canvas引用，用于后续更新状态
             if row_idx == 0:
@@ -1197,9 +1200,9 @@ class HWSimulator:
             col4_frame = tk.Frame(table_frame, bg='white')
             col4_frame.grid(row=row_idx + 1, column=3, sticky='nsew', padx=(20, 2), pady=2)
 
-            # 创建启动按钮，绑定click事件
+            # 创建启动按钮
             btn = tk.Button(col4_frame,
-                            text="启动",  # 初始文字为"启动"
+                            text="启动",  # 默认文字为"启动"
                             font=("微软雅黑", 12),
                             bg='#e8e8e8',
                             fg='#000000',
@@ -1210,6 +1213,10 @@ class HWSimulator:
                             pady=2,
                             command=lambda idx=row_idx: self.start_simulation(idx))
             btn.place(relx=0.5, rely=0.5, anchor='center')
+
+            # 根据保存的状态设置按钮
+            if row_idx < len(self.simulation_states) and self.simulation_states[row_idx]:
+                btn.config(text="停止", bg='#d8d8d8')
 
             # 存储按钮引用
             self.sim_start_buttons.append(btn)
@@ -1271,6 +1278,8 @@ class HWSimulator:
                 button.config(text="停止", bg='#d8d8d8')
                 # 更新状态指示灯为绿色
                 self.update_simulation_status_light(index, 'green')
+                # 保存状态
+                self.simulation_states[index] = True
                 messagebox.showinfo("仿真启动", f"向主机{index + 1} 发送启动命令成功")
             else:
                 messagebox.showerror("发送失败", f"向主机{index + 1} 发送启动命令失败")
@@ -1294,6 +1303,8 @@ class HWSimulator:
                 button.config(text="启动", bg='#e8e8e8')
                 # 更新状态指示灯为红色
                 self.update_simulation_status_light(index, 'red')
+                # 保存状态
+                self.simulation_states[index] = False
                 messagebox.showinfo("仿真停止", f"向主机{index + 1} 发送停止命令成功")
             else:
                 messagebox.showerror("发送失败", f"向主机{index + 1} 发送停止命令失败")
