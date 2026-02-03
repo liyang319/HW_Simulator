@@ -10,6 +10,7 @@ from tkinter import ttk, filedialog, messagebox
 from TCPClient import TCPClient
 from typing import List, Dict
 import time
+from SignalConfigInfo import SignalConfigInfo
 
 
 class HWSimulator:
@@ -30,6 +31,26 @@ class HWSimulator:
         for i in range(5):
             tcp_client = TCPClient(host=f"192.168.1.{100 + i}", port=9001)
             self.tcp_clients.append(tcp_client)
+
+        # 新增：初始化SignalConfigInfo列表
+        self.signal_configs: List[SignalConfigInfo] = []
+
+        # 为每个节点创建初始的SignalConfigInfo
+        for i in range(3):  # 创建3个信号配置，对应3个节点
+            config = SignalConfigInfo(
+                node_ip=self.tcp_clients[i].host,  # 使用TCPClient的IP
+                signal_id="",  # 初始为空，保存时生成
+                signal_value_lower=0.0,
+                signal_value_upper=100.0,
+                dimension="",
+                signal_source="",
+                unit="",
+                calibration_value=0.0,
+                signal_value1=0.0,
+                signal_value2=0.0,
+                signal_value3=0.0
+            )
+            self.signal_configs.append(config)
 
         # 设置窗口为屏幕大小，并定位到左上角
         self.root.geometry(f"{screen_width}x{screen_height}")
@@ -517,13 +538,11 @@ class HWSimulator:
                     node_config['comboboxes'][col_name] = combobox
 
                 elif col_name == "信号ID":  # 修改：处理信号ID列
-                    # 生成信号ID值
-                    signal_id_mapping = {
-                        1: "01_01_01_PO_01",
-                        2: "02_02_02_RTD_02",
-                        3: "03_03_03_PO_03"
-                    }
-                    signal_id_value = signal_id_mapping.get(node_num, "")
+                    # 如果有保存过的配置，显示对应的signal_id
+                    if node_num - 1 < len(self.signal_configs):
+                        signal_id_value = self.signal_configs[node_num - 1].signal_id
+                    else:
+                        signal_id_value = ""
 
                     signal_id_label = tk.Label(cell_frame,
                                                text=signal_id_value,
@@ -591,7 +610,7 @@ class HWSimulator:
         messagebox.showinfo("导出", "导出配置功能")
 
     def save_config(self):
-        """保存配置 - 生成并更新信号ID"""
+        """保存配置 - 生成并更新信号ID，保存到SignalConfigInfo"""
         print("保存配置")
 
         for i, node_config in enumerate(self.node_configs):
@@ -600,7 +619,6 @@ class HWSimulator:
 
             # 1. 获取机柜编号
             cabinet = comboboxes['机柜'].get()
-            # 提取数字，确保两位格式
             cabinet_num = cabinet.replace("机柜", "")
             cabinet_code = cabinet_num.zfill(2)  # 01, 02, 03
 
@@ -628,10 +646,25 @@ class HWSimulator:
             if i < len(self.signal_id_labels):
                 self.signal_id_labels[i].config(text=signal_id)
 
-            print(f"节点{i + 1} 信号ID: {signal_id}")
+            # 8. 获取对应的TCPClient主机IP
+            tcp_client = None
+            if i < len(self.tcp_clients):
+                tcp_client = self.tcp_clients[i]
 
-        # import tkinter.messagebox as messagebox
-        # messagebox.showinfo("保存成功", "信号ID已更新")
+            # 9. 更新对应的SignalConfigInfo
+            if i < len(self.signal_configs):
+                config = self.signal_configs[i]
+                config.signal_id = signal_id
+                if tcp_client:
+                    config.node_ip = tcp_client.host
+
+                print(f"节点{i + 1} 信号配置已更新:")
+                print(f"  IP: {config.node_ip}")
+                print(f"  信号ID: {config.signal_id}")
+                print(f"  配置摘要: {config.get_config_summary()}")
+
+        import tkinter.messagebox as messagebox
+        messagebox.showinfo("保存成功", "信号ID已更新，配置已保存")
 
     def show_config_content(self):
         """显示构型管理内容"""
