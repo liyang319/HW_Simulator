@@ -43,20 +43,21 @@ class HWSimulator:
                 signal_id="",  # 初始为空，保存时生成
                 signal_value_lower=0.0,
                 signal_value_upper=100.0,
-                dimension="",
-                signal_source="",
-                unit="",
+                dimension="100",
+                signal_source="电压",
+                unit="V",
                 calibration_value=0.0,
-                signal_value1=0.0,
-                signal_value2=0.0,
-                signal_value3=0.0
+                signal_value1=1.0,
+                signal_value2=2.0,
+                signal_value3=3.0
             )
             self.signal_configs.append(config)
-
+        self.signal_configs[0].signal_id = "01_01_01_PO_01"
+        self.signal_configs[1].signal_id = "02_02_02_RTD_02"
+        self.signal_configs[2].signal_id = "03_03_03_PO_03"
         # 存储仿真状态
         self.simulation_states = [False, False, False]  # 默认都为停止状态
 
-        self.signal_configs[0].signal_id = ""
         # 设置窗口为屏幕大小，并定位到左上角
         self.root.geometry(f"{screen_width}x{screen_height}")
 
@@ -1260,6 +1261,7 @@ class HWSimulator:
         if button.cget("text") == "启动":
             # 准备要发送的JSON数据
             json_data = {
+                "cmd": "ModuleStart",
                 "signal_id": signal_config.signal_id,
                 "signal_source": signal_config.signal_source if signal_config.signal_source else "unknown",
                 "signal_value1": signal_config.signal_value1
@@ -1286,6 +1288,7 @@ class HWSimulator:
         else:
             # 发送停止命令
             json_data = {
+                "cmd": "ModuleStop",
                 "signal_id": signal_config.signal_id,
                 "signal_source": signal_config.signal_source if signal_config.signal_source else "unknown",
                 "signal_value1": 0.0  # 停止时信号值为0
